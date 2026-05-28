@@ -164,5 +164,6 @@ function parseCSV(csvText) {
     }
     persistData();
     updateCuveeDropdown();
+    if (typeof updateScoresBar === 'function') updateScoresBar();
     alert(cuveeData.length + ' cuvée(s) chargée(s) avec succès.');
 }

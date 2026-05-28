@@ -19,6 +19,7 @@ function loadPersistedData() {
             cuveeData = JSON.parse(saved);
             cuveeIdCounter = savedCounter ? parseInt(savedCounter) : cuveeData.length;
             updateCuveeDropdown();
+            if (typeof updateScoresBar === 'function') updateScoresBar();
         }
     } catch (e) {
         console.warn('Impossible de charger les données sauvegardées :', e);
@@ -153,6 +154,8 @@ function loadCuveeData() {
     document.getElementById('cartonInk').value            = d.cartonInk           || '0';
 
     document.getElementById('objet').value                = d.objet               || '0';
+
+    if (typeof updateScoresBar === 'function') updateScoresBar();
 }
 
 function saveDiagnostic() {

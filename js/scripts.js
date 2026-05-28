@@ -286,6 +286,30 @@ function calculateDiagnosis() {
     // ── Graphique radar ───────────────────────────────────────────────
     renderRadarChart([pctBottle, pctCoiffe, pctBouchage, pctEtiquette,
                       pctEtuis, pctSuremb, pctCarton, pctObjet]);
+
+    // ── Stocker le score + afficher le panneau résultats ─────────────
+    var activeCuveeName = '';
+    if (typeof cuveeData !== 'undefined') {
+        var activeId = document.getElementById('cuveeSelect').value;
+        var activeCuvee = cuveeData.find(function(c) { return c.id == activeId; });
+        if (activeCuvee) {
+            activeCuvee.score = score;
+            activeCuveeName = activeCuvee.name;
+            if (typeof persistData === 'function') persistData();
+        }
+    }
+
+    var nameEl = document.getElementById('rp-cuvee-name');
+    if (nameEl) nameEl.textContent = activeCuveeName ? '— ' + activeCuveeName : '';
+
+    var panel = document.getElementById('resultsPanel');
+    if (panel) {
+        panel.classList.remove('visible');
+        void panel.offsetWidth; // force reflow pour re-déclencher l'animation
+        panel.classList.add('visible');
+    }
+
+    updateScoresBar();
 }
 
 // ── Graphique radar ────────────────────────────────────────────────────
@@ -359,6 +383,61 @@ for (let i = 0; i < accordions.length; i++) {
             setTimeout(function() { panel.classList.remove('panel-entering'); }, 200);
         }
     });
+}
+
+// ── Barre de scores ────────────────────────────────────────────────────
+function updateScoresBar() {
+    var bar = document.getElementById('scoresBar');
+    if (!bar) return;
+
+    var allCuvees = typeof cuveeData !== 'undefined' ? cuveeData : [];
+    var scored = allCuvees.filter(function(c) { return c.score !== undefined; });
+
+    if (scored.length === 0) {
+        bar.innerHTML = '<span class="scores-empty">Calculez un diagnostic pour voir les scores ici</span>';
+        return;
+    }
+
+    function scoreColor(s) { return s >= 80 ? '#15803d' : s >= 60 ? '#b45309' : '#b91c1c'; }
+    function scoreBg(s)    { return s >= 80 ? '#dcfce7' : s >= 60 ? '#fef3c7' : '#fee2e2'; }
+
+    // Score global pondéré par nombre de bouteilles
+    var totalW = 0, totalNb = 0;
+    scored.forEach(function(c) {
+        var nb = parseFloat(c.nb);
+        if (nb > 0) { totalW += c.score * nb; totalNb += nb; }
+    });
+    var isWeighted = totalNb > 0;
+    var globalScore = isWeighted
+        ? Math.round(totalW / totalNb)
+        : Math.round(scored.reduce(function(a, c) { return a + c.score; }, 0) / scored.length);
+
+    var activeCuveeId = document.getElementById('cuveeSelect').value;
+
+    var html = '<div class="score-card global">'
+             + '<div class="score-card-name">Score global</div>'
+             + '<div class="score-card-value" style="color:' + scoreColor(globalScore) + ';background:' + scoreBg(globalScore) + '">'
+             +   globalScore + ' %'
+             + '</div>'
+             + '<div class="score-card-sub">' + (isWeighted ? 'pondéré / bouteilles' : 'moyenne simple') + '</div>'
+             + '</div>'
+             + '<div class="score-card-sep"></div>';
+
+    scored.forEach(function(c) {
+        var nb = parseFloat(c.nb);
+        var isActive = String(c.id) === String(activeCuveeId);
+        html += '<div class="score-card' + (isActive ? ' active' : '') + '"'
+              + ' onclick="document.getElementById(\'cuveeSelect\').value=\'' + c.id + '\';loadCuveeData();"'
+              + ' title="Charger ' + c.name.replace(/"/g, '&quot;') + '">'
+              + '<div class="score-card-name" title="' + c.name.replace(/"/g, '&quot;') + '">' + c.name + '</div>'
+              + '<div class="score-card-value" style="color:' + scoreColor(c.score) + ';background:' + scoreBg(c.score) + '">'
+              +   c.score + ' %'
+              + '</div>'
+              + '<div class="score-card-sub">' + (nb > 0 ? Number(nb).toLocaleString('fr-FR') + ' btl/an' : '—') + '</div>'
+              + '</div>';
+    });
+
+    bar.innerHTML = html;
 }
 
 // ── PDF ───────────────────────────────────────────────────────────────

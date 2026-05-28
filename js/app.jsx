@@ -1,0 +1,1126 @@
+/* ─── REACT — Dépend de : config.js, calculations.js, csv.js ─────── */
+const { useState, useEffect } = React;
+
+/* ─── ICON HELPERS ────────────────────────────────────────────────── */
+const Icon = ({ paths, w = 'w-4', h = 'h-4', cls = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    className={`${w} ${h} ${cls}`} dangerouslySetInnerHTML={{ __html: paths }} />
+);
+
+const Icons = {
+  Leaf:         `<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>`,
+  Download:     `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
+  Upload:       `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>`,
+  Activity:     `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`,
+  ShieldAlert:  `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
+  Compass:      `<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>`,
+  Layers3:      `<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>`,
+  BadgePercent: `<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="15" x2="15.01" y2="15"/><line x1="9.5" y1="14.5" x2="14.5" y2="9.5"/>`,
+  Plus:         `<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>`,
+  Wine:         `<path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H7c-1.5 4-2 6-2 8a5 5 0 0 0 5 5z"/>`,
+  TrendingDown: `<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>`,
+  Info:         `<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>`,
+  ExternalLink: `<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>`,
+  ChevronRight: `<polyline points="9 18 15 12 9 6"/>`,
+  Sparkles:     `<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>`,
+  X:            `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`,
+  ArrowLeft:    `<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>`,
+  ArrowRight:   `<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>`,
+  Layers:       `<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>`,
+  Tag:          `<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>`,
+  Package:      `<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>`,
+  Box:          `<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>`,
+  HelpCircle:   `<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+  CheckCircle2: `<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>`,
+  AlertTriangle:`<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+  Library:      `<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`,
+  Trash2:       `<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`,
+  BarChart3:    `<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>`,
+};
+
+const I = (name, cls = '', w = 'w-4', h = 'h-4') => <Icon paths={Icons[name]} w={w} h={h} cls={cls} />;
+
+/* ─── SCORE HELPERS ───────────────────────────────────────────────── */
+const scoreColorCls = s =>
+  s >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+  : s >= 60 ? 'text-brand-gold bg-brand-gold/5 border-brand-gold/20'
+  : 'text-rose-700 bg-rose-50 border-rose-100';
+
+const scoreBarCls = s =>
+  s >= 80 ? 'bg-emerald-500' : s >= 60 ? 'bg-brand-gold' : 'bg-rose-500';
+
+/* ─── RADAR CHART ─────────────────────────────────────────────────── */
+function RadarChart({ scores, labels }) {
+  const size = 320, center = 160, maxR = 110, count = scores.length;
+  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
+  const pts = scores.map((s, i) => {
+    const a = (i * 2 * Math.PI / count) - (Math.PI / 2), r = maxR * (s / 100);
+    return { x: center + r * Math.cos(a), y: center + r * Math.sin(a), s, label: labels[i], a };
+  });
+  const polyStr = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const dotCol = s => s >= 80 ? '#10b981' : s >= 60 ? '#C5A059' : '#ef4444';
+
+  return (
+    <div className="bg-brand-offwhite border border-brand-border rounded-xl p-4 flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+      <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[9px] uppercase font-bold tracking-widest text-brand-dark/55">
+        {I('Activity', 'text-brand-gold animate-pulse', 'w-3.5', 'h-3.5')} Analyse de Cycle de Vie Simplifiée
+      </div>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[280px] h-auto drop-shadow-sm mt-4 select-none">
+        {gridLevels.map((lv, gi) => {
+          const gps = Array.from({ length: count }).map((_, i) => {
+            const a = (i * 2 * Math.PI / count) - (Math.PI / 2), r = maxR * lv;
+            return `${center + r * Math.cos(a)},${center + r * Math.sin(a)}`;
+          });
+          return <polygon key={gi} points={gps.join(' ')} fill="none" stroke="#E9ECEF" strokeWidth="0.8" strokeDasharray={gi === 4 ? 'none' : '3,3'} />;
+        })}
+        {gridLevels.map((lv, i) => (
+          <text key={i} x={center} y={center - maxR * lv - 3} textAnchor="middle"
+            style={{ fill: 'rgba(45,52,54,0.45)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
+            {Math.round(lv * 100)}%
+          </text>
+        ))}
+        {Array.from({ length: count }).map((_, i) => {
+          const a = (i * 2 * Math.PI / count) - (Math.PI / 2);
+          return <line key={i} x1={center} y1={center} x2={center + maxR * Math.cos(a)} y2={center + maxR * Math.sin(a)} stroke="#E9ECEF" strokeWidth="1" />;
+        })}
+        {scores.length > 0 && <polygon points={polyStr} fill="rgba(197,160,89,0.14)" stroke="#C5A059" strokeWidth="2.2" />}
+        {pts.map((p, i) => {
+          const td = maxR + 22, lx = center + td * Math.cos(p.a), ly = center + td * Math.sin(p.a);
+          let ta = 'middle';
+          if (Math.cos(p.a) > 0.1) ta = 'start';
+          if (Math.cos(p.a) < -0.1) ta = 'end';
+          let dy = '0.33em';
+          if (Math.sin(p.a) > 0.8) dy = '0.9em';
+          if (Math.sin(p.a) < -0.8) dy = '-0.1em';
+          return (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="4.5" fill={dotCol(p.s)} stroke="#fff" strokeWidth="1.5" />
+              <text x={lx} y={ly} dy={dy} textAnchor={ta}
+                style={{ fill: 'rgba(45,52,54,0.75)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
+                {p.label}
+              </text>
+              <text x={p.x} y={p.y - 8} textAnchor="middle"
+                style={{ fill: 'rgba(45,52,54,0.85)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
+                {Math.round(p.s)}%
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/* ─── BOTTLE VISUALIZER ───────────────────────────────────────────── */
+function BottleVisualizer({ data }) {
+  const res = calculateDiagnostic(data);
+  const weight = parseFloat(data.bottleWeight) || 0;
+  const isOpaque = data.bottlecolor === 'opaque', isBlanche = data.bottlecolor === 'blanche';
+  const isHeavy = weight >= 900, isOverweight = weight > 835 && weight < 900 && data.bottleshape !== 'special';
+  const coiffeWarn = ['etain','alu_epais','complexe'].includes(data.coiffeMat);
+  const coiffeLong = data.coiffeSize === 'longue';
+  const collWarn = ['plastique','metal'].includes(data.coiffecoll);
+  const thermoWarn = data.coiffethermo === 'oui';
+  const plaqueWarn = data.capsuleType === 'plastique' || data.plaqueSeparable === 'non';
+  const etiMatWarn = ['papiercoton','métal','plastique'].includes(data.etiquetteMat);
+  const highInk = data.etiquetteEcoInk || data.etiquetteInkRatio === '>70%';
+  const hotDore = data.etiquetteDor === 'dorurechaud';
+  const ultraColle = data.etiquetteColle === 'colleultra';
+  const sysEtui = data.etuisType === 'systematique';
+
+  const foilColor = () => {
+    if (data.coiffeMat === 'papier')   return '#e7e5e4';
+    if (data.coiffeMat === 'etain')    return '#9ca3af';
+    if (data.coiffeMat === 'alu_epais') return '#d1d5db';
+    if (data.coiffeMat === 'complexe') return '#e5e7eb';
+    return '#fcd34d';
+  };
+  const glassColor = () => {
+    if (isOpaque)  return '#1c1917';
+    if (isBlanche) return '#e2e8f0';
+    if (data.bottlecolor === 'brune') return '#78350f';
+    return '#14532d';
+  };
+
+  const coiffePath = coiffeLong
+    ? "M 88 40 C 88 110, 82 130, 74 150 L 126 150 C 118 130, 112 110, 112 40 Z"
+    : "M 88 40 C 88 75, 88 95, 87 105 L 113 105 C 112 95, 112 75, 112 40 Z";
+  const collPath = coiffeLong
+    ? "M 78 120 C 78 120, 100 130, 122 120 L 124 135 C 124 135, 100 145, 76 135 Z"
+    : "M 87 90 C 87 90, 100 95, 113 90 L 113 100 C 113 100, 100 105, 87 100 Z";
+
+  return (
+    <div className="bg-white border border-brand-border rounded-xl p-5 shadow-sm flex flex-col">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand-border">
+        <div>
+          <h3 className="text-sm font-bold text-brand-dark flex items-center gap-1.5">
+            {I('Leaf', 'text-brand-gold', 'w-4', 'h-4')} Rendu Éco-conception Temps Réel
+          </h3>
+          <p className="text-[10px] text-brand-dark/60 font-sans mt-0.5">Maquette virtuelle sensorielle des impacts de l'Unité Vente</p>
+        </div>
+        <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border ${scoreColorCls(res.score)}`}>
+          Score : {res.score}%
+        </span>
+      </div>
+
+      <div className="flex gap-6 items-start flex-wrap">
+        {/* SVG Bottle */}
+        <div className="relative flex-shrink-0 flex justify-center" style={{ height: '290px', width: '160px' }}>
+          <svg viewBox="0 0 200 400" style={{ height: '100%', width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}>
+            <path d="M 100 25 C 90 25, 88 50, 88 80 C 88 110, 82 130, 70 160 C 55 190, 52 220, 52 260 C 52 320, 55 375, 75 375 L 125 375 C 145 375, 148 320, 148 260 C 148 220, 145 190, 130 160 C 118 130, 112 110, 112 80 C 112 50, 110 25, 100 25 Z"
+              fill={glassColor()} stroke={isHeavy ? '#ef4444' : isOverweight ? '#f59e0b' : '#3f3f46'} strokeWidth={isHeavy ? 3 : 1.5} />
+            {(isOpaque || isBlanche) && <path d="M 54 260 C 54 320, 57 373, 75 373 L 125 373 C 143 373, 146 320, 146 260"
+              fill="none" stroke={isOpaque ? '#ef4444' : '#f59e0b'} strokeWidth="2.5" strokeDasharray="4,4" />}
+            {data.bottleincr === 'oui' && <g>
+              <circle cx="90" cy="240" r="3" fill="#ef4444" />
+              <circle cx="110" cy="250" r="3" fill="#ef4444" />
+              <circle cx="100" cy="265" r="3" fill="#ef4444" />
+              <path d="M 85 240 Q 100 260, 115 240" stroke="#ef4444" strokeWidth="1" fill="none" />
+            </g>}
+            <path d={coiffePath} fill={foilColor()} stroke={coiffeWarn ? '#ef4444' : '#22c55e'} strokeWidth={coiffeWarn ? 1.8 : 1} />
+            {thermoWarn && <path d="M 86 35 L 86 120 L 114 120 L 114 35 Z"
+              fill="rgba(239,68,68,0.15)" stroke="#ef4444" strokeWidth="1.2" strokeDasharray="3,1" />}
+            {data.coiffecoll !== 'non' && data.coiffecoll !== '0' && <path d={collPath}
+              fill={collWarn ? '#f87171' : '#a7f3d0'} stroke={collWarn ? '#ef4444' : '#10b981'} strokeWidth="1" />}
+            <path d="M 88 40 Q 100 35, 112 40 Q 112 25, 100 25 Q 88 25, 88 40"
+              fill={plaqueWarn ? '#fca5a5' : '#10b981'} stroke={plaqueWarn ? '#ef4444' : '#047857'} strokeWidth="1.5" />
+            <ellipse cx="100" cy="42" rx="11" ry="3" fill="none" stroke="#27272a" strokeWidth="1" />
+            <line x1="89" y1="42" x2="87" y2="70" stroke="#27272a" strokeWidth="0.8" />
+            <line x1="111" y1="42" x2="113" y2="70" stroke="#27272a" strokeWidth="0.8" />
+            <path d="M 62 210 L 138 210 A 80 80 0 0 1 138 290 L 62 290 A 80 80 0 0 1 62 210 Z"
+              fill={etiMatWarn ? '#fee2e2' : '#fefbf3'} stroke={etiMatWarn ? '#ef4444' : '#d97706'} strokeWidth={etiMatWarn || ultraColle ? 2 : 1} />
+            {hotDore && <g>
+              <path d="M 72 230 L 128 230" stroke="#f59e0b" strokeWidth="2.5" />
+              <path d="M 72 270 L 128 270" stroke="#f59e0b" strokeWidth="2.5" />
+              <circle cx="100" cy="250" r="12" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="3,2" />
+            </g>}
+            {highInk && <rect x="75" y="240" width="50" height="20" fill="#3f3f46" rx="2" style={{ opacity: 0.8 }} />}
+            {plaqueWarn && <circle cx="100" cy="30" r="5" fill="#ef4444" style={{ opacity: 0.75 }} />}
+            {coiffeWarn && <circle cx="100" cy="90" r="5" fill="#ef4444" style={{ opacity: 0.75 }} />}
+            {isHeavy && <path d="M 52 320 Q 100 340, 148 320" fill="none" stroke="#ef4444" strokeWidth="3" />}
+          </svg>
+          {/* Labels */}
+          <div style={{ position: 'absolute', top: '8%', left: '2%' }}
+            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
+            <span className={`w-1.5 h-1.5 rounded-full ${plaqueWarn ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Plaque
+          </div>
+          <div style={{ position: 'absolute', top: '28%', right: '2%' }}
+            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
+            <span className={`w-1.5 h-1.5 rounded-full ${coiffeWarn || coiffeLong ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Coiffe
+          </div>
+          <div style={{ position: 'absolute', top: '60%', left: '2%' }}
+            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
+            <span className={`w-1.5 h-1.5 rounded-full ${etiMatWarn || ultraColle || hotDore ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Étiquette
+          </div>
+          <div style={{ position: 'absolute', bottom: '2%', right: '2%' }}
+            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
+            <span className={`w-1.5 h-1.5 rounded-full ${isHeavy || isOpaque ? 'bg-rose-500' : 'bg-emerald-500'}`} /> {weight}g
+          </div>
+        </div>
+
+        {/* Anomaly list */}
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="bg-brand-offwhite border border-brand-border rounded-lg p-3">
+            <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-gray flex items-center gap-1">
+              {I('Info', 'text-brand-dark/40', 'w-3.5', 'h-3.5')} Anomalies Identifiées
+            </h4>
+            <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              {isHeavy && <Warn level="error" title={`Bouteille excessive (${weight}g)`} msg="Dépasse l'ancien standard 900g. Impact carbone colossal." />}
+              {isOverweight && <Warn level="warn" title={`Marge d'allègement (${weight}g)`} msg={`Visez le standard de 835g. Pénalité interpolée (-${res.rawPenalties.bottle.toFixed(1)} pts).`} />}
+              {isOpaque && <Warn level="error" title="Verre Opaque" msg="Empêche le tri optique infrarouge Adelphe Citeo (-3 pts)." />}
+              {isBlanche && <Warn level="warn" title="Verre Blanc" msg="Taux de calcin recyclé très faible. Forte pression matière vierge." />}
+              {data.coiffeMat === 'etain' && <Warn level="error" title="Coiffe en Étain" msg="Pénalité lourde. Extraction énergivore et nocive." />}
+              {coiffeLong && data.coiffeMat !== 'papier' && <Warn level="warn" title="Coiffe longue" msg="Surconsommation d'aluminium. Privilégiez un habillage court." />}
+              {data.bottleincr === 'oui' && <Warn level="error" title="Incrustations fusionnées" msg="Pollue les fours à calcin verriers." />}
+              {plaqueWarn && <Warn level="error" title="Plaque d'acier inséparable" msg="L'opercule plastique bloque le captage magnétique Citeo." />}
+              {ultraColle && <Warn level="error" title="Adhésifs PSA permanents" msg="Brûlent dans le calcin en laissant des dépôts vitreux noirs." />}
+              {hotDore && <Warn level="warn" title="Dorure à chaud" msg="Consomme une énergie de pression thermique importante." />}
+              {sysEtui && <Warn level="error" title="Étuis distribués systématiquement" msg="Génère un volume excessif de déchets carton." />}
+              {data.etiquetteColle === 'collewashoff' && (
+                <div className="flex gap-2 items-start text-xs text-emerald-700 bg-emerald-50/50 p-2 rounded border border-emerald-100/50">
+                  <span className="mt-0.5">{I('CheckCircle2', 'text-emerald-500', 'w-4', 'h-4')}</span>
+                  <div><span className="font-semibold">Adhésif Wash-Off actif ✓</span>
+                    <p className="text-[10px] mt-0.5">Sublime le réemploi et consigne de verre.</p>
+                  </div>
+                </div>
+              )}
+              {!isHeavy && !isOverweight && !isOpaque && !coiffeWarn && !plaqueWarn && !ultraColle && (
+                <div className="flex gap-2 items-start text-xs text-emerald-700 bg-emerald-50/30 p-2 rounded border border-emerald-100/30">
+                  {I('CheckCircle2', 'text-emerald-500 mt-0.5 shrink-0', 'w-4', 'h-4')}
+                  <div><span className="font-semibold">Base bouteille optimisée</span>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">Profil proche de l'idéal préconisé par le Comité Champagne.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Warn({ level, title, msg }) {
+  const cls = level === 'error'
+    ? 'text-rose-700 bg-rose-50/50 border-rose-100/50'
+    : 'text-amber-700 bg-amber-50/50 border-amber-100/50';
+  const ic = level === 'error' ? 'text-rose-500' : 'text-amber-500';
+  return (
+    <div className={`flex gap-2 items-start text-xs p-2 rounded border ${cls}`}>
+      {I('AlertTriangle', `${ic} mt-0.5 shrink-0`, 'w-4', 'h-4')}
+      <div><span className="font-semibold">{title}</span><p className="text-[10px] mt-0.5">{msg}</p></div>
+    </div>
+  );
+}
+
+/* ─── WIZARD TUNNEL ───────────────────────────────────────────────── */
+const STEPS = [
+  { id: 'bottle',   title: 'Flacon & Matière',   icon: 'Wine',    desc: 'Le verre de la Bouteille' },
+  { id: 'closure',  title: 'Bouchage & Coiffe',  icon: 'Layers',  desc: "L'habillage du goulot" },
+  { id: 'label',    title: 'Étiquetage & Colle', icon: 'Tag',     desc: 'Encres, colles et dorure' },
+  { id: 'package',  title: 'Étuis & Sacs',       icon: 'Package', desc: 'Présentation logistique' },
+  { id: 'delivery', title: 'Expédition & Pub',   icon: 'Box',     desc: "Cartons d'expédition & objets" },
+];
+
+function WizardTunnel({ data, onChange, onSimulateWhatIf }) {
+  const [step, setStep] = useState(0);
+  const up = (k, v) => onChange({ ...data, [k]: v });
+
+  const Sel = ({ label, name, opts, hint }) => (
+    <div>
+      <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        {label}{hint && <span className="text-[10px] text-emerald-600 font-mono italic normal-case font-normal">{hint}</span>}
+      </label>
+      <select value={data[name] || '0'} onChange={e => up(name, e.target.value)}
+        className="w-full border border-stone-200 rounded-lg p-2.5 text-sm bg-white focus:border-amber-500 focus:outline-none">
+        {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </div>
+  );
+
+  const Num = ({ label, name, placeholder, hint, disabled }) => (
+    <div>
+      <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        {label}{hint && <span className="text-[10px] text-emerald-600 font-mono italic normal-case font-normal">{hint}</span>}
+      </label>
+      <input type="number" value={data[name] || ''} onChange={e => up(name, e.target.value)}
+        placeholder={placeholder} disabled={disabled}
+        className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-500 focus:outline-none disabled:bg-stone-50 disabled:text-stone-400" />
+    </div>
+  );
+
+  const Chk = ({ id, label, name }) => (
+    <div className="flex items-center gap-2">
+      <input type="checkbox" id={id} checked={!!data[name]} onChange={e => up(name, e.target.checked)} className="w-4 h-4 rounded" />
+      <label htmlFor={id} className="text-xs font-medium text-stone-700 leading-normal">{label}</label>
+    </div>
+  );
+
+  return (
+    <div className="bg-white border border-brand-border rounded-xl shadow-sm flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-brand-offwhite border-b border-brand-border px-5 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-brand-dark text-brand-gold rounded-lg">{I(STEPS[step].icon, '', 'w-5', 'h-5')}</div>
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-widest text-brand-gray">Étape {step + 1} sur {STEPS.length}</span>
+            <h1 className="text-sm font-bold text-brand-dark">{STEPS[step].title}</h1>
+          </div>
+        </div>
+        <button onClick={onSimulateWhatIf}
+          className="flex items-center gap-1.5 bg-brand-gold text-white font-bold text-xs px-4 py-2 rounded-full shadow-md hover:bg-brand-gold-hover transition-colors cursor-pointer">
+          {I('Sparkles', '', 'w-3.5', 'h-3.5')} Simuler What-If
+        </button>
+      </div>
+
+      {/* Step dots */}
+      <div className="px-5 py-2.5 border-b border-brand-border bg-brand-offwhite/50 flex items-center gap-1 overflow-x-auto select-none">
+        {STEPS.map((s, i) => (
+          <button key={s.id} onClick={() => setStep(i)} className="flex items-center gap-1.5 focus:outline-none shrink-0">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono transition-all ${i === step ? 'bg-brand-gold text-white font-bold scale-110' : i < step ? 'bg-brand-dark text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+              {i + 1}
+            </div>
+            <span className={`text-[10.5px] ${i === step ? 'text-brand-dark font-bold' : 'text-brand-gray font-medium'}`}>
+              {s.title.split(' ')[0]}
+            </span>
+            {i < STEPS.length - 1 && <div className="h-0.5 w-6 bg-brand-border" />}
+          </button>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 p-6 overflow-y-auto" style={{ maxHeight: '420px' }}>
+        {step === 0 && <div className="space-y-4 animate-fadeIn">
+          <Num label="Poids de la bouteille (g)" name="bottleWeight" placeholder="ex: 835" hint="(PPC optimal cimenté à 835g)" />
+          <p className="text-[10px] text-stone-400 -mt-2">Le passage de 900g à 835g réduit le bilan carbone par flacon d'environ 15%.</p>
+          <Sel label="Forme de la bouteille" name="bottleshape" opts={[
+            ['0','Choisir...'],
+            ['standard',"Standard d'appellation Champagne"],
+            ['special','Forme spéciale / flacon de prestige personnalisé'],
+          ]} />
+          <Sel label="Couleur du verre" name="bottlecolor" opts={[
+            ['0','Choisir...'],
+            ['verte','Verre Vert (Taux élevé de calcin recyclé)'],
+            ['brune','Verre Brun (Taux de calcin recyclé excellent)'],
+            ['opaque','Verre Opaque (Perturbe le tri optique)'],
+            ['blanche','Verre Blanc (Forte empreinte de sable pur vierge)'],
+          ]} />
+          <Sel label="Incrustations dans le verre" name="bottleincr" opts={[
+            ['0','Choisir...'],
+            ['non','Aucun décor en fusion (Recommandé)'],
+            ['oui',"Présence d'incrustations exogènes complexes"],
+          ]} />
+        </div>}
+
+        {step === 1 && <div className="space-y-4 animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Matière de la coiffe" name="coiffeMat" opts={[
+              ['0','Choisir...'],
+              ['etain','Étain pur (Énergivore et lourd)'],
+              ['alu_epais','100% Aluminium Épais'],
+              ['complexe','Complexe composite Alu-PE (Plastifié)'],
+              ['alu_fin','100% Aluminium Fin traditionnel'],
+              ['papier',"Papier d'écorce (Éco-conçu exceptionnel)"],
+            ]} />
+            <Sel label="Longueur de coiffe" name="coiffeSize" opts={[
+              ['0','Choisir...'],
+              ['longue','Habillage de col long standard'],
+              ['courte','Habillage court (Économie de matière)'],
+            ]} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Collerette décorative" name="coiffecoll" opts={[
+              ['0','Choisir...'],
+              ['non','Absence de collerette'],
+              ['papier-tradi','Collerette papier traditionnelle'],
+              ['papier-adh','Collerette papier auto-adhésive'],
+              ['plastique','Collerette plastique'],
+              ['metal','Collerette métallique rigide'],
+            ]} />
+            <Sel label="Plastique thermoformé de tête" name="coiffethermo" opts={[
+              ['0','Choisir...'],
+              ['non','Non'],
+              ['oui','Oui (Empêche décollement mécanique)'],
+            ]} />
+          </div>
+          <div className="border-t border-stone-100 my-2" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Type de Plaque (Muselet)" name="capsuleType" opts={[
+              ['0','Choisir...'],
+              ['metalique',"Plaque d'acier métallique recyclable"],
+              ['plastique','Plaque de synthèse plastique'],
+            ]} />
+            <Sel label="Séparabilité Plaque / Insert" name="plaqueSeparable" hint="(CRITÈRE CITEO)" opts={[
+              ['oui',"Oui (L'insert n'est pas soudé thermo)"],
+              ['non',"Non (Inséparable, brûle avec l'acier)"],
+            ]} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Impressions sur la plaque" name="capsuleColor" opts={[
+              ['0','Choisir...'],
+              ['non',"Pas d'impression"],
+              ['mono','Monochrome (Une seule couleur)'],
+              ['mono-inf','Monochrome avec impression face inférieure'],
+              ['poly','Polychrome (Plusieurs couleurs complexes)'],
+              ['poly-inf','Polychrome et surimpression face inférieure'],
+            ]} />
+            <Sel label="Bouchon durable certifié" name="bouchonType" opts={[
+              ['0','Choisir...'],
+              ['oui','Oui (Liège FSC/PEFC durablement géré)'],
+              ['non','Non / Autre'],
+              ['nsp','Je ne sais pas (non tracé)'],
+            ]} />
+          </div>
+        </div>}
+
+        {step === 2 && <div className="space-y-4 animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Num label="Nombre d'étiquettes distinctes" name="etiquetteCount" placeholder="ex: 2" />
+            <Num label="Nombre de couleurs d'encrage" name="etiquetteColor" placeholder="ex: 4" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center pt-2">
+            <Chk id="etiquetteEcoInk" label="Grands aplats de couleurs (Forte charge d'encre)" name="etiquetteEcoInk" />
+            <Sel label="Ratio d'encrage / aplats" name="etiquetteInkRatio" hint="(Adelphe Citeo)" opts={[
+              ['<30%',"Léger — inférieur à 30%"],
+              ['30-70%','Moyen — de 30% à 70%'],
+              ['>70%','Élevé — supérieur à 70%'],
+            ]} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-stone-50 p-3 rounded-lg border border-stone-100">
+            <Sel label="Matière de l'étiquette" name="etiquetteMat" opts={[
+              ['0','Choisir...'],
+              ['papierepais','Papier traditionnel léger'],
+              ['papieradh','Papier auto-adhésif standard'],
+              ['papiercoton','Papier coton (Trachéophile lourd)'],
+              ['plastique','Synthétique Plastique PE / PP'],
+              ['métal','Feuille métallique'],
+            ]} />
+            <Sel label="Matière contre-étiquette" name="etiquettecontreMat" opts={[
+              ['0','Choisir...'],
+              ['papierepais','Papier traditionnel léger'],
+              ['papieradh','Papier auto-adhésif standard'],
+              ['papiercoton','Papier coton lourd'],
+              ['plastique','Synthétique Plastique PE / PP'],
+              ['métal','Feuille métallique'],
+            ]} />
+          </div>
+          <Chk id="papierreshum" label="Traitement de Résistance à l'état humide (REH)" name="papierreshum" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Type de Dorure" name="etiquetteDor" opts={[
+              ['0','Choisir...'],
+              ['pasdorure','Absence de dorure'],
+              ['dorurefroid','Dorure à froid (Consommation décente)'],
+              ['dorurechaud','Dorure à chaud (Haute empreinte thermique)'],
+            ]} />
+            <Sel label="Technologie Colle Adhésive" name="etiquetteColle" hint="(Wash-Off recommandé)" opts={[
+              ['0','Choisir...'],
+              ['collestand','Colle hydrosoluble standard'],
+              ['colleultra','Colle ultra-adhésive non hydrosoluble (PSA)'],
+              ['collewashoff','Colle Wash-Off hydrosoluble (+Bonus)'],
+            ]} />
+          </div>
+        </div>}
+
+        {step === 3 && <div className="space-y-4 animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Distribution d'Étuis / Coffrets" name="etuisType" opts={[
+              ['0','Choisir...'],
+              ['pasetuiscoffret',"Pas d'étuis (Recommandé)"],
+              ['commande','Sur commande expresse uniquement'],
+              ['systematique','Systématique pour chaque flacon'],
+            ]} />
+            <Num label="Poids d'étui unitaire (g)" name="etuiWeight" placeholder="ex: 400" disabled={data.etuisType === 'pasetuiscoffret'} />
+          </div>
+          {data.etuisType !== 'pasetuiscoffret' && data.etuisType !== '0' && (
+            <div className="space-y-3 bg-stone-50 p-4 rounded-xl border border-stone-100">
+              <h4 className="text-[11px] font-mono uppercase tracking-wider text-stone-500">Matières & Caractéristiques de l'étui</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <Chk id="elementsassos" label="Livrets & notices associés" name="elementsassos" />
+                <Chk id="etuisEcoink" label="Aplats de couleur larges" name="etuisEcoink" />
+                <Chk id="etuissilkpaper" label="Papier de soie interne" name="etuissilkpaper" />
+                <Chk id="etuisBois" label="Bois brut massif" name="etuisBois" />
+                <Chk id="etuisPlastique" label="Plastique rigide ou mousse" name="etuisPlastique" />
+                <Chk id="etuisPapier" label="Papier" name="etuisPapier" />
+                <Chk id="etuisCarton" label="Carton" name="etuisCarton" />
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="etuisAimant" checked={!!data.etuisAimant} onChange={e => up('etuisAimant', e.target.checked)} className="w-4 h-4 rounded" />
+                  <label htmlFor="etuisAimant" className="text-xs font-medium text-stone-700 flex items-center gap-1">
+                    Fermetures aimantées <span className="text-[9px] text-rose-600 bg-rose-50 px-1 rounded border border-rose-100">Banned</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="border-t border-stone-100 my-2" />
+          <Sel label="Suremballage / Sacs Boutique" name="suremballage" opts={[
+            ['0','Choisir...'],
+            ['pas_de_sac','Pas de sac systématique (Recommandé)'],
+            ['sac_sur_demande','Sacs distribués sur demande expresse'],
+            ['sac_systematique','Sacs enveloppes distribués systématiquement'],
+          ]} />
+          {data.suremballage !== 'pas_de_sac' && data.suremballage !== '0' && (
+            <div className="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-lg border border-stone-100">
+              <Chk id="suremballageEcoink" label="Aplats de couleurs" name="suremballageEcoink" />
+              <Chk id="sacPapier" label="Sac papier" name="sacPapier" />
+              <Chk id="sacCarton" label="Sac carton" name="sacCarton" />
+              <Chk id="sacPlastique" label="Sac plastique" name="sacPlastique" />
+              <Chk id="sacAimant" label="Fermeture aimantée" name="sacAimant" />
+            </div>
+          )}
+        </div>}
+
+        {step === 4 && <div className="space-y-4 animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Fibres carton recyclées ?" name="cartonRecycled" opts={[
+              ['0','Choisir...'],
+              ['oui','Oui (Papier liner 100% recyclé)'],
+              ['non','Non / Autre (Fibre vierge lourde)'],
+            ]} />
+            <Sel label="Épaisseur / Cannelure" name="cartonCannelure" opts={[
+              ['0','Choisir...'],
+              ['B','Simple cannelure B (PPC standard)'],
+              ['E','Simple cannelure mineure E'],
+              ['EB','Double Cannelure EB (Lourd)'],
+              ['BE','Double Cannelure BE'],
+            ]} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Nature des intercalaires" name="cartonInter" opts={[
+              ['0','Choisir...'],
+              ['carton','Bandeaux / Alvéoles en carton'],
+              ['cellulose','Moulé cellulose (Éco-conception idéale)'],
+              ['plastique','Mousses synthétiques plastiques'],
+            ]} />
+            <Sel label="Adhésifs de fermeture scotch" name="cartonScotch" opts={[
+              ['0','Choisir...'],
+              ['plastique','Synthétique plastique non hydrolysable'],
+              ['papier kraft','Papier Kraft (Facilite recyclage)'],
+            ]} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Sel label="Encrage des marquages" name="cartonInk" opts={[
+              ['0','Choisir...'],
+              ['huileminerale',"Encres à base d'huiles minérales (MOSH/MOAH)"],
+              ['encrevegetale','Encres végétales écologiques (Recommandé)'],
+            ]} />
+            <Sel label="Objets publicitaires joints" name="objet" opts={[
+              ['0','Choisir...'],
+              ['non',"Absence d'objet publicitaire (Recommandé)"],
+              ['oui',"Présence d'objets ou goodies promotionnels"],
+            ]} />
+          </div>
+          <Sel label="Dorure sur carton" name="cartonDor" opts={[
+            ['0','Choisir...'],
+            ['pasdorure','Pas de dorure'],
+            ['dorurefroid','Dorure à froid'],
+            ['dorurechaud','Dorure à chaud (Haute empreinte thermique)'],
+          ]} />
+        </div>}
+      </div>
+
+      {/* Footer */}
+      <div className="bg-brand-offwhite border-t border-brand-border p-4 flex items-center justify-between">
+        <button disabled={step === 0} onClick={() => setStep(s => s - 1)}
+          className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg border border-brand-border bg-white hover:bg-brand-offwhite text-brand-dark disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">
+          {I('ArrowLeft', '', 'w-4', 'h-4')} Précédent
+        </button>
+        <button onClick={() => setStep(s => s === STEPS.length - 1 ? 0 : s + 1)}
+          className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold rounded-lg bg-brand-dark text-white hover:opacity-95 cursor-pointer shadow-sm active:scale-95 transition-all">
+          {step === STEPS.length - 1 ? 'Recommencer' : 'Suivant'} {I('ArrowRight', '', 'w-4.5', 'h-4.5')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── GAMME DASHBOARD ─────────────────────────────────────────────── */
+function GammeDashboard({ cuvees, selectedId, onSelect, onOpenModal }) {
+  const totalVol = cuvees.reduce((a, c) => a + (parseFloat(c.nb) || 0), 0);
+  let wScore = 0, wVol = 0, simpleSum = 0, cnt = 0;
+  cuvees.forEach(c => {
+    if (c.score !== undefined) {
+      simpleSum += c.score; cnt++;
+      const v = parseFloat(c.nb) || 0;
+      if (v > 0) { wScore += c.score * v; wVol += v; }
+    }
+  });
+  const houseScore = wVol > 0 ? Math.round(wScore / wVol) : (cnt > 0 ? Math.round(simpleSum / cnt) : null);
+
+  return (
+    <div className="bg-white border-b border-brand-border py-3.5 px-6 shadow-sm">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="bg-brand-offwhite border border-brand-border p-2.5 rounded-lg">{I('Wine', 'text-brand-gold', 'w-6', 'h-6')}</div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[10px] uppercase font-mono tracking-wider text-brand-dark/65 font-bold">Gamme Champagne</h2>
+              <span className="text-[10px] bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded border border-brand-gold/20 font-mono font-bold">Maison</span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-base font-bold">{totalVol > 0 ? totalVol.toLocaleString('fr-FR') : '—'}</span>
+              <span className="text-xs text-brand-dark/65">btls / an</span>
+            </div>
+          </div>
+          <div className="h-8 w-px bg-brand-border mx-2 hidden lg:block" />
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-brand-dark/65 font-bold">Score Global Maison</div>
+              <div className="text-[10px] text-brand-dark/50 font-mono">{wVol > 0 ? 'Pondéré par volume' : 'Moyenne simple'}</div>
+            </div>
+            <div className={`text-sm font-mono font-bold px-3 py-1.5 rounded border shadow-sm ${houseScore !== null ? scoreColorCls(houseScore) : 'text-brand-dark bg-brand-offwhite border-brand-border'}`}>
+              {houseScore !== null ? `${houseScore} %` : '—'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 lg:max-w-xl">
+          <div className="flex items-center justify-between text-[10px] uppercase font-mono text-brand-dark/65 font-bold mb-1.5 px-1">
+            <span className="flex items-center gap-1">{I('BarChart3', 'text-brand-dark/60', 'w-3.5', 'h-3.5')} Volume & Score Cuvées</span>
+            <span>Ratio %</span>
+          </div>
+          <div className="flex items-center gap-1.5 h-8 bg-brand-offwhite rounded-lg p-1 border border-brand-border overflow-hidden">
+            {cuvees.length === 0
+              ? <div className="text-[10px] text-brand-dark/50 italic pl-1.5">Aucune cuvée configurée.</div>
+              : cuvees.map(c => {
+                  const v = parseFloat(c.nb) || 0;
+                  const ratio = totalVol > 0 ? (v / totalVol) * 100 : 100 / cuvees.length;
+                  const isActive = c.id === selectedId;
+                  if (ratio < 2 && !isActive) return null;
+                  return (
+                    <button key={c.id} onClick={() => onSelect(c.id)} style={{ flexGrow: Math.max(1, Math.round(ratio)) }}
+                      className={`h-full rounded text-[10px] font-semibold transition-all px-2 truncate flex items-center justify-between gap-1 border cursor-pointer ${isActive ? 'bg-brand-gold text-white font-bold border-brand-gold shadow-sm' : 'bg-white hover:bg-brand-offwhite text-brand-dark border-brand-border'}`}
+                      title={`${c.name} — ${v.toLocaleString('fr-FR')} btls (${ratio.toFixed(1)}%) — Score: ${c.score !== undefined ? c.score + '%' : 'N/A'}`}>
+                      <span className="truncate max-w-20">{c.name}</span>
+                      <span className="opacity-90 text-[8px] font-mono shrink-0">{c.score !== undefined ? `${c.score}%` : '—'}</span>
+                    </button>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        <button onClick={onOpenModal}
+          className="flex items-center gap-1.5 bg-brand-dark hover:opacity-90 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm">
+          {I('Layers3', '', 'w-3.5', 'h-3.5')} Modifier ma Gamme
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── GAMME MODAL ─────────────────────────────────────────────────── */
+function GammeModal({ isOpen, onClose, cuvees, onSave }) {
+  const [local, setLocal] = useState([]);
+  useEffect(() => { if (isOpen) setLocal(JSON.parse(JSON.stringify(cuvees))); }, [isOpen, cuvees]);
+  if (!isOpen) return null;
+  const totalVol = local.reduce((a, c) => a + (parseFloat(c.nb) || 0), 0);
+
+  const add = () => {
+    const nextId = local.length > 0 ? Math.max(...local.map(c => c.id)) + 1 : 1;
+    setLocal([...local, { id: nextId, name: `Cuvée Prestige ${nextId}`, nb: '10000', diagnostic: createDefaultDiagnostic() }]);
+  };
+  const upd = (id, f, v) => setLocal(local.map(c => c.id === id ? { ...c, [f]: v } : c));
+  const del = id => { if (confirm('Supprimer cette cuvée de votre catalogue ?')) setLocal(local.filter(c => c.id !== id)); };
+
+  return (
+    <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 select-none">
+      <div className="bg-white border border-brand-border rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-zoomIn" style={{ maxHeight: '90vh' }}>
+        <div className="bg-brand-offwhite border-b border-brand-border px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {I('Library', 'text-brand-gold', 'w-5', 'h-5')}
+            <div>
+              <h2 className="text-sm font-bold text-brand-dark">Gamme et Catalogue de la Maison</h2>
+              <p className="text-[10.5px] text-brand-dark/60 mt-0.5">Configurez vos cuvées vendues annuellement</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-brand-border text-brand-dark/40 hover:text-brand-dark transition cursor-pointer">
+            {I('X', '', 'w-5', 'h-5')}
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto space-y-4 flex-1">
+          {local.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-brand-border rounded-xl space-y-2.5">
+              {I('Library', 'w-8 h-8 mx-auto text-brand-dark/30', 'w-8', 'h-8')}
+              <p className="text-xs text-brand-dark/65">Votre gamme de cuvées est actuellement vide.</p>
+              <button onClick={add} className="inline-flex items-center gap-1.5 bg-brand-dark hover:opacity-90 text-white text-[11px] font-bold px-4 py-2 rounded shadow-sm cursor-pointer">
+                {I('Plus', '', 'w-3.5', 'h-3.5')} Ajouter une cuvée d'essai
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
+                {local.map((c, idx) => {
+                  const v = parseFloat(c.nb) || 0, pct = totalVol > 0 ? (v / totalVol * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 bg-brand-offwhite p-3 rounded-lg border border-brand-border shadow-sm">
+                      <div className="font-mono text-[10px] text-brand-dark/40 w-5 text-center font-bold">#{idx + 1}</div>
+                      <div className="flex-1">
+                        <label className="block text-[9.5px] uppercase font-bold text-brand-dark/50 mb-0.5 font-mono">Nom du Flacon / Cuvée</label>
+                        <input type="text" value={c.name} onChange={e => upd(c.id, 'name', e.target.value)}
+                          className="w-full text-xs font-semibold text-brand-dark border border-brand-border bg-white rounded px-2.5 py-1.5 focus:border-brand-gold focus:outline-none" />
+                      </div>
+                      <div className="w-40">
+                        <label className="block text-[9.5px] uppercase font-bold text-brand-dark/50 mb-0.5 font-mono">Volume Annuel (Btls)</label>
+                        <input type="number" value={c.nb} onChange={e => upd(c.id, 'nb', e.target.value)} min="0"
+                          className="w-full text-xs font-mono text-brand-dark border border-brand-border bg-white rounded px-2.5 py-1.5 focus:border-brand-gold focus:outline-none" />
+                      </div>
+                      <div className="w-14 text-center shrink-0">
+                        <div className="text-[9.5px] uppercase font-bold text-brand-dark/50 font-mono mb-0.5">Poids %</div>
+                        <span className="text-xs font-mono font-bold text-brand-dark bg-brand-border/50 px-1.5 py-0.5 rounded">{pct}%</span>
+                      </div>
+                      <button onClick={() => del(c.id)} className="p-1.5 text-brand-dark/40 hover:text-rose-600 hover:bg-brand-border rounded-lg transition cursor-pointer" title="Supprimer">
+                        {I('Trash2', '', 'w-4', 'h-4')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-brand-border">
+                <button onClick={add} className="flex items-center gap-1.5 text-xs text-brand-dark bg-brand-border/40 hover:bg-brand-border/60 font-mono font-bold px-3.5 py-2 rounded-lg transition cursor-pointer">
+                  {I('Plus', '', 'w-4', 'h-4')} Ajouter un flacon
+                </button>
+                <div className="text-right text-xs text-brand-dark/65 font-mono flex items-center gap-1.5">
+                  {I('BadgePercent', 'text-brand-dark/30', 'w-4', 'h-4')}
+                  Total : <span className="font-bold text-brand-dark">{totalVol.toLocaleString('fr-FR')}</span> btls / an
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-brand-offwhite border-t border-brand-border px-6 py-4 flex items-center justify-end gap-3.5">
+          <button onClick={onClose} className="px-4 py-2 text-xs font-bold rounded-lg border border-brand-border bg-white hover:bg-brand-offwhite text-brand-dark transition cursor-pointer">
+            Annuler
+          </button>
+          <button onClick={() => { onSave(local); onClose(); }}
+            className="px-5 py-2 text-xs font-bold rounded-lg bg-brand-dark hover:opacity-90 text-white transition active:scale-95 shadow-sm cursor-pointer">
+            Valider et Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── APP ─────────────────────────────────────────────────────────── */
+function App() {
+  const [cuvees, setCuvees] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [csvError, setCsvError] = useState(null);
+  const [showWhatIf, setShowWhatIf] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('embaDiag_cuveeData');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const scored = parsed.map(c => { const r = calculateDiagnostic(c.diagnostic); return { ...c, score: r.score, result: r }; });
+        setCuvees(scored);
+        if (scored.length > 0) setSelectedId(scored[0].id);
+      } else {
+        const bsa = createDefaultDiagnostic();
+        const prestige = {
+          ...createDefaultDiagnostic(),
+          bottleWeight: '950', bottleshape: 'special', bottlecolor: 'opaque', bottleincr: 'oui',
+          coiffeMat: 'etain', coiffeSize: 'longue', coiffecoll: 'metal',
+          capsuleType: 'plastique', plaqueSeparable: 'non',
+          etiquetteCount: '3', etiquetteMat: 'métal', etiquetteDor: 'dorurechaud', etiquetteColle: 'colleultra',
+          etuisType: 'systematique', etuiWeight: '1100', etuisBois: true, etuisAimant: true, objet: 'oui',
+        };
+        const demo = [
+          { id: 1, name: 'Brut Sans Année (BSA)', nb: '1000000', diagnostic: bsa, score: calculateDiagnostic(bsa).score, result: calculateDiagnostic(bsa) },
+          { id: 2, name: "Blanc de Blancs d'Exception", nb: '5000', diagnostic: prestige, score: calculateDiagnostic(prestige).score, result: calculateDiagnostic(prestige) },
+        ];
+        setCuvees(demo); setSelectedId(1);
+        localStorage.setItem('embaDiag_cuveeData', JSON.stringify(demo));
+      }
+    } catch (e) { console.warn(e); }
+  }, []);
+
+  const persist = (updated) => {
+    try { localStorage.setItem('embaDiag_cuveeData', JSON.stringify(updated)); } catch (e) {}
+  };
+
+  const activeCuvee = cuvees.find(c => c.id === selectedId) || null;
+  const currentResult = activeCuvee ? calculateDiagnostic(activeCuvee.diagnostic) : null;
+  const whatIfResult  = activeCuvee ? calculateDiagnostic(simulateWhatIf(activeCuvee.diagnostic)) : null;
+
+  const handleDiagChange = (newData) => {
+    if (!selectedId) return;
+    const updated = cuvees.map(c => {
+      if (c.id === selectedId) { const r = calculateDiagnostic(newData); return { ...c, diagnostic: newData, score: r.score, result: r }; }
+      return c;
+    });
+    setCuvees(updated); persist(updated);
+  };
+
+  const handleCatalogSave = (newCat) => {
+    const scored = newCat.map(c => { const r = calculateDiagnostic(c.diagnostic); return { ...c, score: r.score, result: r }; });
+    setCuvees(scored); persist(scored);
+    if (scored.length > 0) {
+      const exists = scored.some(c => c.id === selectedId);
+      if (!exists) setSelectedId(scored[0].id);
+    } else setSelectedId(null);
+  };
+
+  const handleLoadCSV = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setCsvError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = parseCSV(reader.result);
+        const scored = parsed.map(c => { const r = calculateDiagnostic(c.diagnostic); return { ...c, score: r.score, result: r }; });
+        setCuvees(scored); persist(scored);
+        if (scored.length > 0) setSelectedId(scored[0].id);
+        alert(`${scored.length} cuvée(s) chargée(s) avec succès !`);
+      } catch (err) { setCsvError(err.message); }
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  };
+
+  const handleApplyWhatIf = () => {
+    if (!activeCuvee) return;
+    handleDiagChange(simulateWhatIf(activeCuvee.diagnostic));
+    setShowWhatIf(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-offwhite flex flex-col font-sans text-brand-dark border-t-4 border-brand-gold">
+      {/* HEADER */}
+      <header className="bg-white border-b border-brand-border px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-brand-offwhite border border-brand-border p-2 rounded-xl">
+            {I('Leaf', 'text-brand-gold animate-pulse', 'w-5', 'h-5')}
+            <span className="font-mono text-xs text-brand-dark/65 tracking-tight font-extrabold select-none">ADELPHE & CIVC</span>
+          </div>
+          <div className="h-4 w-px bg-brand-border" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-extrabold tracking-tight text-brand-dark">EmbaDiag <span className="text-brand-gold text-sm font-mono font-bold">v2.0</span></h1>
+              <span className="text-[9.5px] font-mono font-bold uppercase tracking-wider bg-emerald-600/10 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-600/20">PPWR Compliant</span>
+            </div>
+            <p className="text-[11px] text-brand-dark/65 font-sans mt-0.5">Copilote d'Éco-conception & OAD environnemental des Maisons de Champagne</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap lg:justify-end">
+          <button onClick={() => exportToCSV(cuvees)}
+            className="flex items-center gap-1.5 bg-white hover:bg-brand-offwhite text-brand-dark font-bold font-mono text-xs px-3.5 py-2 rounded-lg border border-brand-border transition active:scale-95 cursor-pointer shadow-sm">
+            {I('Download', '', 'w-3.5', 'h-3.5')} Exporter (.CSV)
+          </button>
+          <label className="flex items-center gap-1.5 bg-white hover:bg-brand-offwhite text-brand-dark font-bold font-mono text-xs px-3.5 py-2 rounded-lg border border-brand-border transition active:scale-95 cursor-pointer shadow-sm">
+            {I('Upload', '', 'w-3.5', 'h-3.5')} Charger (.CSV)
+            <input type="file" accept=".csv" className="hidden" onChange={handleLoadCSV} />
+          </label>
+          <a href="https://www.champagne.fr/" target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 bg-brand-dark hover:opacity-90 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition active:scale-95 shadow-sm cursor-pointer">
+            Guide Éco-conception {I('ExternalLink', 'text-white', 'w-3', 'h-3')}
+          </a>
+        </div>
+      </header>
+
+      {/* DASHBOARD BAR */}
+      <GammeDashboard cuvees={cuvees} selectedId={selectedId} onSelect={setSelectedId} onOpenModal={() => setModalOpen(true)} />
+
+      {/* MAIN WORKSPACE */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left column */}
+        <section className="lg:col-span-7 space-y-6">
+          {csvError && (
+            <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 text-xs text-rose-700 flex gap-2">
+              {I('ShieldAlert', 'text-rose-500 shrink-0 mt-0.5', 'w-4.5', 'h-4.5')}
+              <div><span className="font-bold">Échec d'importation CSV :</span>
+                <p className="mt-1 leading-relaxed text-[11px] font-mono">{csvError}</p>
+              </div>
+            </div>
+          )}
+          {activeCuvee ? (
+            <div className="grid grid-cols-1 gap-6">
+              <BottleVisualizer data={activeCuvee.diagnostic} />
+              <WizardTunnel data={activeCuvee.diagnostic} onChange={handleDiagChange} onSimulateWhatIf={() => setShowWhatIf(true)} />
+            </div>
+          ) : (
+            <div className="bg-white border border-brand-border rounded-xl p-10 text-center space-y-3">
+              {I('Wine', 'text-brand-dark/20 mx-auto', 'w-12', 'h-12')}
+              <h3 className="text-sm font-bold text-brand-dark">Aucune cuvée sélectionnée</h3>
+              <p className="text-xs text-brand-dark/60">Créez une cuvée dans votre gamme pour lancer l'Assistant Éco-conception.</p>
+              <button onClick={() => setModalOpen(true)} className="bg-brand-dark hover:opacity-90 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition cursor-pointer">
+                Ouvrir mon catalogue
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Right column — Scores & Advises */}
+        <section className="lg:col-span-5 space-y-6">
+          {activeCuvee && currentResult ? (
+            <div className="bg-white border border-brand-border rounded-xl p-5 shadow-sm space-y-5">
+              <div className="border-b border-brand-border pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-brand-dark tracking-tight flex items-center gap-1.5">
+                    {I('Activity', 'text-brand-gold', 'w-4', 'h-4')} Indice EmbaScore : {activeCuvee.name}
+                  </h3>
+                  <p className="text-[10px] text-brand-dark/50 font-sans mt-0.5 uppercase tracking-widest font-bold">Règles Adelphe & Citeo révisées</p>
+                </div>
+                <span className="text-[10px] bg-brand-offwhite text-brand-dark/70 px-2 py-0.5 rounded font-mono font-bold border border-brand-border">
+                  S/ {parseFloat(activeCuvee.nb).toLocaleString('fr-FR')} btls
+                </span>
+              </div>
+
+              {/* Big Score */}
+              <div className="bg-brand-offwhite border border-brand-border rounded-lg p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/50">Score Global Éco-conception</div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className={`text-3xl font-mono font-bold tracking-tight ${currentResult.score >= 80 ? 'text-emerald-600' : currentResult.score >= 60 ? 'text-brand-gold' : 'text-rose-500'}`}>
+                      {currentResult.score}%
+                    </span>
+                    <span className="text-brand-dark/40 text-xs font-mono">/ 100</span>
+                  </div>
+                  <div className="text-[10px] text-brand-dark/50 mt-0.5 font-mono font-medium">
+                    Poids total pénalités : {Object.values(currentResult.rawPenalties).slice(0, 8).reduce((a, b) => a + b, 0).toFixed(1)} / 70.0
+                  </div>
+                </div>
+                <div className={`text-right text-xs px-3 py-1.5 rounded-lg border font-mono font-bold ${scoreColorCls(currentResult.score)}`}>
+                  {currentResult.score >= 80 ? 'Classe A — Éco-conçu' : currentResult.score >= 60 ? 'Classe B — Améliorable' : 'Classe C — Pénalisé'}
+                </div>
+              </div>
+
+              {/* CO2 */}
+              <div className="bg-brand-gold/5 border border-brand-gold/15 rounded-lg p-4 flex items-start gap-3">
+                {I('Compass', 'text-brand-gold mt-0.5 shrink-0', 'w-5', 'h-5')}
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-amber-700 block">Estimation Bilan Gaz Effet de Serre</span>
+                  <div className="text-lg font-mono font-bold text-brand-dark mt-0.5">
+                    {currentResult.carbonGCo2} gCO₂e <span className="text-brand-dark/50 text-xs font-sans font-normal">/ Bouteille</span>
+                    <span className="text-brand-gold text-xs font-mono font-bold ml-1.5">± {currentResult.carbonUncertaintyPercent}%</span>
+                  </div>
+                  <p className="text-[10.5px] text-brand-dark/60 leading-relaxed font-sans mt-1">
+                    Estimation carbone screening premier niveau. <span className="font-semibold underline">Incertitude de ±{currentResult.carbonUncertaintyPercent}%</span> liée aux variations de calcin régional (Non ACV ISO-14044).
+                  </p>
+                </div>
+              </div>
+
+              {/* Radar */}
+              <div>
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/55 mb-2">Empreinte Structurale des Composants</h4>
+                <RadarChart
+                  scores={[currentResult.scoreBottle, currentResult.scoreCoiffe, currentResult.scoreBouchage, currentResult.scoreEtiquette, currentResult.scoreEtuis, currentResult.scoreSuremb, currentResult.scoreCarton, currentResult.scoreObjet]}
+                  labels={['Flacon','Coiffe','Bouchon','Étiquette','Étuis','Suremb.','Carton','Objets']} />
+              </div>
+
+              {/* Detail bars */}
+              <div className="space-y-2 border-t border-brand-border pt-4">
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/55 mb-3 block">Évaluation Détaillée par Module</h4>
+                {[
+                  ['Matériau bouteille & Verre',        currentResult.scoreBottle],
+                  ['Coiffe de goulot & manchon',         currentResult.scoreCoiffe],
+                  ['Bouchage, plaque & muselet',         currentResult.scoreBouchage],
+                  ["Étiquette front/back & colle",       currentResult.scoreEtiquette],
+                  ['Étuis, coffrets & inserts',          currentResult.scoreEtuis],
+                  ['Suremballage logistique / sacs',     currentResult.scoreSuremb],
+                  ["Cartons, cannelure & adhésifs",      currentResult.scoreCarton],
+                  ["Objets publicitaires joints",        currentResult.scoreObjet],
+                ].map(([label, score], idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-medium text-brand-dark/85">
+                      <span>{label}</span>
+                      <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded border ${scoreColorCls(score)}`}>{score}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-brand-border/30 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${scoreBarCls(score)}`} style={{ width: `${score}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* RSE Axes */}
+              <div className="bg-brand-offwhite rounded-lg p-4 border border-brand-border grid grid-cols-1 gap-3">
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-gray">Évaluation synthétique par Axe RSE</h4>
+                {[
+                  ['Sobriété globale',    'Allègement du poids & des suremballages',   currentResult.scoreSobriete],
+                  ['Recyclabilité Citeo', "Séparabilité, encrage & flottaison",        currentResult.scoreRecyclage],
+                  ['Ressource Matières',  "Matériaux recyclés, FSC & d'origine",       currentResult.scoreMateriaux],
+                ].map(([title, desc, score], idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="text-xs font-bold text-brand-dark">{title}</div>
+                      <div className="text-[10px] text-brand-dark/55">{desc}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${scoreColorCls(score)}`}>{score}%</span>
+                      <div className="w-14 h-4 bg-brand-border/40 rounded relative overflow-hidden">
+                        <div className={`h-full rounded ${scoreBarCls(score)}`} style={{ width: `${score}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Advises */}
+              <div className="bg-gray-50 border border-brand-border rounded-lg p-4">
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-dark flex items-center gap-1.5">
+                  {I('TrendingDown', 'text-brand-gold', 'w-4', 'h-4')} Pistes de réduction d'impact (What-If)
+                </h4>
+                <ul className="mt-3.5 space-y-2.5">
+                  {currentResult.advises.map((adv, idx) => (
+                    <li key={idx} className="text-xs text-brand-dark/75 flex items-start gap-2 leading-relaxed font-medium">
+                      {I('ChevronRight', 'text-brand-gold mt-0.5 shrink-0', 'w-3.5', 'h-3.5')} <span>{adv}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-brand-border rounded-xl p-6 text-center text-brand-dark/50 font-sans italic">
+              Veuillez configurer ou sélectionner une cuvée.
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* MODALS */}
+      <GammeModal isOpen={modalOpen} onClose={() => setModalOpen(false)} cuvees={cuvees} onSave={handleCatalogSave} />
+
+      {/* WHAT-IF MODAL */}
+      {showWhatIf && activeCuvee && currentResult && whatIfResult && (
+        <div className="fixed inset-0 bg-brand-dark/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 select-none animate-zoomIn">
+          <div className="bg-white border border-brand-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div className="bg-brand-offwhite border-b border-brand-border px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {I('Sparkles', 'text-brand-gold', 'w-5', 'h-5')}
+                <div>
+                  <h3 className="text-sm font-bold text-brand-dark">Simulation prospective "What-If"</h3>
+                  <p className="text-[10px] text-brand-dark/60 mt-0.5 font-medium">Analyse des gains écologiques avec transitions techniques conseillées</p>
+                </div>
+              </div>
+              <button onClick={() => setShowWhatIf(false)} className="p-1 rounded-full hover:bg-brand-border text-brand-dark/40 hover:text-brand-dark transition cursor-pointer">
+                {I('X', '', 'w-4', 'h-4')}
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="border border-brand-border rounded-lg p-3.5 text-center bg-brand-offwhite">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-brand-gray block">Diagnostic Actuel</span>
+                  <div className="text-2xl font-mono font-bold text-brand-dark mt-1">{currentResult.score}%</div>
+                  <div className="text-[10px] font-mono text-brand-dark/60 mt-0.5">{currentResult.carbonGCo2} gCO₂e</div>
+                </div>
+                <div className="border border-emerald-100 rounded-lg p-3.5 text-center bg-emerald-50">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-700 block">Théorique Optimisé</span>
+                  <div className="text-2xl font-mono font-bold text-emerald-600 mt-1">{whatIfResult.score}%</div>
+                  <div className="text-[10px] font-mono text-emerald-600 font-bold mt-0.5">
+                    {whatIfResult.carbonGCo2} gCO₂e (-{Math.round((1 - whatIfResult.carbonGCo2 / currentResult.carbonGCo2) * 100)}%)
+                  </div>
+                </div>
+              </div>
+              <div className="bg-brand-offwhite rounded-lg p-3.5 border border-brand-border space-y-1.5">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/60 block mb-1">Transformations appliquées :</span>
+                <div className="space-y-1 text-xs text-brand-dark/80 leading-normal font-medium">
+                  {[
+                    'Bouteille allégée continue à 835 g',
+                    'Substitution coiffes Étain/composite → Coiffe Papier courte',
+                    "Intégration Colles hydrosolubles Wash-off pour le réemploi",
+                    'Suppression des étuis carton de prestige systématiques',
+                    'Carton recyclé cannelure B simple avec encrage végétal',
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />{t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[10px] text-brand-dark/60 leading-normal text-center">
+                En appliquant ces optimisations Adelphe Citeo, votre bouteille s'aligne à la classe la plus éco-conçue du Comité Champagne !
+              </p>
+            </div>
+            <div className="bg-brand-offwhite border-t border-brand-border px-6 py-4 flex items-center justify-end gap-3.5">
+              <button onClick={() => setShowWhatIf(false)}
+                className="px-4 py-2 text-xs font-bold rounded-lg border border-brand-border bg-white hover:bg-brand-offwhite text-brand-dark cursor-pointer transition">
+                Fermer l'analyse
+              </button>
+              <button onClick={handleApplyWhatIf}
+                className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer active:scale-95 transition">
+                Appliquer à ma Cuvée active
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer className="bg-brand-dark border-t border-brand-dark/20 px-6 py-5 text-xs text-center select-none font-medium leading-relaxed mt-auto">
+        <div className="flex items-center justify-center gap-2">
+          {I('Wine', 'text-brand-gold', 'w-4', 'h-4')}
+          <span className="text-white/90">EmbaDiag 2.0 — Copilote numérique de performance environnementale de l'industrie du Champagne.</span>
+        </div>
+        <p className="text-[10px] text-white/50 mt-1">Développé en adéquation avec le Plan de Prévention Commun Champagne, la loi AGEC française et les orientations PPWR européennes.</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);

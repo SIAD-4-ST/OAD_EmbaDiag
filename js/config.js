@@ -1,0 +1,50 @@
+/* ─── BENCHMARK CONFIG ────────────────────────────────────────────── */
+const BENCHMARK_CONFIG = {
+  uncertaintyPercent: 8,
+  carbonFactors: {
+    glass: { verte: 680, brune: 765, opaque: 765, blanche: 1018 },
+    coiffe: {
+      etain:     { longue: 49.73, courte: 28.23 },
+      alu_epais: { longue: 23.2,  courte: 13.18 },
+      complexe:  { longue: 14.8,  courte: 8.4   },
+      alu_fin:   { longue: 10.62, courte: 6.03  },
+      papier:    { longue: 1.6,   courte: 0.8   },
+    },
+    collerette: {
+      'papier-tradi': 0.169,
+      'papier-adh':   0.437,
+      plastique:      5.757,
+      metal:         11.320,
+    },
+    bouchon_standard: 42.791,
+    capsule_tirage:    8.356,
+    capsule_plaque:    5.58,
+    etiquette: {
+      papierepais:  0.210,
+      papieradh:    0.392,
+      papiercoton:  5.167,
+      plastique:    5.167,
+      'métal':     10.160,
+    },
+    contreEtiquette: {
+      papierepais:  0.090,
+      papieradh:    0.168,
+      papiercoton:  2.218,
+      plastique:    2.218,
+      'métal':      4.361,
+    },
+    etuis: { bois: 700, papier: 641, carton: 932, plastique: 3105 },
+    cartonCannelure: { single: 35.167, double: 53.500 },
+    cartonInter: { carton: 9.318, cellulose: 18.325, plastique: 1.625 },
+  },
+  penalties: {
+    bottle:    { minWeight: 835, maxWeight: 900, maxPenalty: 3.0, specialDiscount: 0.5, opaquePenalty: 3.0, blanchePenalty: 3.0, incrPenalty: 3.0 },
+    coiffe:    { etainPenalty: 3.0, aluEpaisPenalty: 1.0, complexePenalty: 1.0, longuePenalty: 1.0, collerettePapierPenalty: 1.0, collerettePlastiqueMetalPenalty: 3.0, thermoPenalty: 3.0 },
+    bouchage:  { plastiquePenalty: 3.0, impressionsPenalty: 1.0, nonDurableBouchonPenalty: 1.0, nonSeparablePlaquePenalty: 2.0 },
+    etiquette: { multipleLabelsPenalty: 1.0, manyColorsPenalty: 1.0, ecoInkPenalty: 1.0, unrecyclableMaterialPenalty: 3.0, humidResistPenalty: 1.0, hotDorePenalty: 1.0, ultraCollePenalty: 3.0, washOffBonus: -1.0, highEncragePenalty: 2.0 },
+    etuis:     { systematiquePenalty: 3.0, unitaireHeavyPenalty: 1.0, assosPenalty: 1.0, aplatPenalty: 1.0, silkPaperPenalty: 1.0, boisPenalty: 3.0, plastiquePenalty: 1.0, aimantPenalty: 3.0 },
+    suremballage: { commissionPenalty: 1.0, systematiquePenalty: 3.0, aplatPenalty: 1.0, plastiquePenalty: 1.0, aimantPenalty: 3.0 },
+    carton:    { nonRecycledPenalty: 1.0, doubleCannelurePenalty: 1.0, plastiqueInterPenalty: 3.0, cartonInterPenalty: 1.0, plastiqueScotchPenalty: 1.0, hotDorePenalty: 1.0, mineralInkPenalty: 1.0 },
+    objet:     { presencePenalty: 3.0 },
+  },
+};

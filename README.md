@@ -1,724 +1,905 @@
-# EmbaDiag — Outil d'éco-conception des emballages en Champagne
+# EmbaDiag v2.0 — Documentation technique
 
-Application web de diagnostic éco-conception destinée aux maisons de Champagne. Elle évalue l'impact environnemental des emballages d'une cuvée à travers huit catégories, produit un score global (EmbaScore), trois scores d'axes transversaux et une empreinte carbone estimée par bouteille.
+> Copilote d'éco-conception et OAD (Outil d'Aide à la Décision) environnemental des Maisons de Champagne.  
+> Développé en conformité avec le Plan de Prévention Commun Champagne, la loi AGEC et les orientations PPWR européennes.
 
 ---
 
 ## Sommaire
 
-1. [Architecture des fichiers](#1-architecture-des-fichiers)
-2. [Méthodologie de calcul](#2-méthodologie-de-calcul)
-   - [EmbaScore global](#embascore-global)
-   - [Scores par catégorie](#scores-par-catégorie)
-   - [Axes transversaux](#axes-transversaux)
-   - [Empreinte carbone](#empreinte-carbone)
-   - [Score global pondéré multi-cuvées](#score-global-pondéré-multi-cuvées)
-3. [Référence des fichiers](#3-référence-des-fichiers)
-   - [index.html](#indexhtml)
-   - [js/scripts.js](#jsscriptsjs)
-   - [js/poptabledata.js](#jspoptabledatajs)
-   - [js/saveResults.js](#jssaveresultsjs)
-   - [css/styles.css](#cssstylescss)
-4. [Dépendances](#4-dépendances)
-5. [Déploiement](#5-déploiement)
+1. [Présentation générale](#1-présentation-générale)
+2. [Architecture & lancement](#2-architecture--lancement)
+3. [Fichiers — rôle & quand les modifier](#3-fichiers--rôle--quand-les-modifier)
+4. [Structure des données : l'objet Diagnostic](#4-structure-des-données--lobjet-diagnostic)
+5. [config.js — Facteurs carbone & pénalités](#5-configjs--facteurs-carbone--pénalités)
+6. [calculations.js — Moteur de calcul](#6-calculationsjs--moteur-de-calcul)
+7. [csv.js — Import / Export](#7-csvjs--import--export)
+8. [index.html — Composants React](#8-indexhtml--composants-react)
+9. [Barème de scoring détaillé](#9-barème-de-scoring-détaillé)
+10. [Axes RSE transversaux](#10-axes-rse-transversaux)
+11. [Estimation carbone (gCO₂e)](#11-estimation-carbone-gco₂e)
+12. [Simulation What-If](#12-simulation-what-if)
+13. [Persistance & export CSV](#13-persistance--export-csv)
+14. [Modifier les barèmes](#14-modifier-les-barèmes)
 
 ---
 
-## 1. Architecture des fichiers
+## 1. Présentation générale
+
+EmbaDiag est une application **100 % front-end** (HTML + JS + CSS, aucun serveur requis) qui permet aux Maisons de Champagne d'évaluer l'impact environnemental de leurs emballages selon les règles **Adelphe / Citeo** révisées.
+
+### Fonctionnalités principales
+
+| Fonctionnalité | Description |
+|---|---|
+| **Wizard multi-étapes** | 5 étapes guidées couvrant tous les composants de l'emballage |
+| **Score EmbaScore** | Note globale de 0 à 100 calculée en temps réel |
+| **Visualiseur bouteille SVG** | Rendu graphique de la bouteille avec codes couleur d'alerte |
+| **Radar ACV** | Graphique araignée des 8 composants évalués |
+| **Simulation What-If** | Projection du gain si toutes les bonnes pratiques étaient appliquées |
+| **Gestion de gamme** | Multi-cuvées avec score global Maison pondéré par volume |
+| **Export CSV** | Export de toutes les cuvées avec leurs données brutes |
+| **Import CSV** | Rechargement d'un export précédent |
+| **Persistance localStorage** | Sauvegarde automatique dans le navigateur |
+| **Axes RSE** | Scores croisés Sobriété / Recyclabilité / Ressources matières |
+
+---
+
+## 2. Architecture & lancement
+
+### Structure des fichiers
 
 ```
-OAD_EmbaDiag/
-├── index.html               Point d'entrée unique de l'application
+dev/
+├── index.html          ← Point d'entrée unique (HTML + JSX React inline)
 ├── css/
-│   └── styles.css           Tous les styles (design system, layout, composants)
-├── js/
-│   ├── scripts.js           Calculs, affichage des résultats, accordéons, barre de scores
-│   ├── poptabledata.js      Gestion des cuvées, persistance localStorage, infobulles
-│   └── saveResults.js       Export CSV, import CSV (parser RFC 4180)
-└── media/
-    ├── bouteille.png        Icône section Bouteille
-    ├── coiffe.png           Icône section Coiffe
-    ├── bouchons.png         Icône section Bouchage
-    ├── etiquette.png        Icône section Étiquette
-    ├── coffret-vin.png      Icône section Étuis / Coffrets
-    ├── papier-kraft.png     Icône section Suremballage
-    ├── boite-ouverte.png    Icône section Carton d'expédition
-    ├── boite-cadeau.png     Icône section Objets publicitaires
-    ├── gaz-carbonique.png   Icône empreinte carbone
-    ├── logo-large@2x.png    Logo Adelphe
-    ├── logo_epsyvin_baseline_h.png
-    ├── CIVC_Sign_Q.png      Logo CIVC (favicon et header)
-    ├── Logo_pdf.png         Icône bouton guide PDF
-    └── plan-de-prevention-commun-champagne_2023.pdf
+│   └── styles.css      ← Animations et styles custom (scrollbar, focus)
+└── js/
+    ├── config.js       ← Constantes : facteurs carbone et pénalités
+    ├── calculations.js ← Moteur de calcul du diagnostic
+    ├── csv.js          ← Fonctions d'import/export CSV
+    └── app.jsx         ← Source miroir des composants React (référence IDE)
 ```
 
-Les trois fichiers JS sont chargés dans cet ordre en bas de `<body>` : `scripts.js` → `saveResults.js` → `poptabledata.js`. Les variables globales définies dans `poptabledata.js` (`cuveeData`, `cuveeIdCounter`) sont accessibles depuis `scripts.js` car les fonctions sont appelées après le chargement complet du DOM.
+### Ordre de chargement dans le navigateur
+
+```
+1. React 18 CDN         (global : React, ReactDOM)
+2. Babel Standalone CDN (transpile JSX → JS à la volée)
+3. Tailwind CDN         (utilitaires CSS)
+4. css/styles.css       (animations, scrollbar)
+5. js/config.js         (global : BENCHMARK_CONFIG)
+6. js/calculations.js   (global : calculateDiagnostic, simulateWhatIf, createDefaultDiagnostic)
+7. js/csv.js            (global : exportToCSV, parseCSV, parseCSVLine, csvCell)
+8. <script type="text/babel"> dans index.html  (composants React)
+```
+
+> **Note :** Les fichiers 5–7 sont des `<script>` classiques : leurs variables sont accessibles en scope global, ce qui permet aux composants React de les appeler directement sans import.
+
+### Lancement
+
+Double-cliquer sur `dev/index.html` — s'ouvre directement dans le navigateur, aucun serveur requis.
 
 ---
 
-## 2. Méthodologie de calcul
+## 3. Fichiers — rôle & quand les modifier
 
-### Principe général
+### `js/config.js`
+Contient **uniquement** l'objet `BENCHMARK_CONFIG` avec les facteurs carbone et les pénalités.  
+→ À modifier pour **changer un barème, un facteur carbone, un seuil**.
 
-Le système utilise une **logique de pénalités** (points perdus) plutôt que de points gagnés. Chaque mauvais choix éco-conception ajoute des points bruts à un compteur de section. Le score affiché est l'inverse normalisé : `score (%) = (1 − points_bruts / max_section) × 100`. Un score de 100 % signifie aucune pénalité détectée (pratiques optimales ou données non renseignées).
+### `js/calculations.js`
+Contient la logique métier pure (aucun HTML, aucun React).  
+→ À modifier pour **changer une règle de calcul, ajouter un critère, modifier la pondération**.
 
-### EmbaScore global
+### `js/csv.js`
+Contient les fonctions d'import/export CSV.  
+→ À modifier pour **changer les colonnes exportées ou le format**.
 
-```
-totalRaw = Σ(points bruts de chaque section)
-EmbaScore = arrondi((1 − totalRaw / 70) × 100)
-```
+### `index.html`
+Contient le HTML de la page + les composants React JSX inline.  
+→ À modifier pour **changer l'interface utilisateur, les libellés, l'ergonomie**.
 
-Le dénominateur **70** est la somme des maxima de toutes les sections :
+### `js/app.jsx`
+Copie miroir du bloc JSX de `index.html`, maintenu à jour pour l'édition dans l'IDE.  
+→ Éditer ici, puis copier-coller dans le `<script type="text/babel">` de `index.html`.
 
-| Section          | Max points bruts |
-|------------------|-----------------|
-| Bouteille        | 9               |
-| Coiffe           | 10              |
-| Bouchage         | 5               |
-| Étiquette        | 11              |
-| Étuis / Coffrets | 15              |
-| Suremballage     | 9               |
-| Carton           | 8               |
-| Objets pub.      | 3               |
-| **Total**        | **70**          |
-
-Couleur d'affichage : vert ≥ 80 %, orange ≥ 60 %, rouge < 60 %.
+### `css/styles.css`
+Animations CSS et surcharges de style (scrollbar, bordures de focus des inputs).  
+→ À modifier pour **changer les transitions ou le style des champs de formulaire**.
 
 ---
 
-### Scores par catégorie
+## 4. Structure des données : l'objet Diagnostic
 
-Chaque section produit un pourcentage indépendant : `pct = arrondi((1 − score_section / max_section) × 100)`.
+Chaque cuvée possède un objet `diagnostic` contenant toutes ses caractéristiques d'emballage. C'est l'entrée de la fonction `calculateDiagnostic()`.
 
-#### Bouteille (max 9)
+### Champs de l'objet diagnostic
 
-| Condition | Points bruts | Axe transversal |
-|-----------|-------------|-----------------|
-| Poids > 910 g | +3 | Sobriété +1 |
-| 835 g < poids ≤ 910 g ET forme ≠ « Spéciale » | +3 | Sobriété +1 |
-| 835 g < poids ≤ 910 g ET forme = « Spéciale » | +1 | Sobriété +1 |
-| Couleur opaque | +3 | Recyclage +1 |
-| Couleur blanche | +3 | Matériaux +1 |
-| Incrustations = Oui | +3 | Recyclage +1 |
+#### Bouteille
 
-> La règle de poids 835–910 g s'applique dès que la forme n'est pas explicitement déclarée « Spéciale » (valeur par défaut traitée comme standard).
+| Champ | Type | Valeurs possibles | Description |
+|---|---|---|---|
+| `bottleWeight` | string (num) | `"835"`, `"900"`, … | Poids de la bouteille en grammes |
+| `bottleshape` | string | `"standard"`, `"special"` | Forme du flacon |
+| `bottlecolor` | string | `"verte"`, `"brune"`, `"opaque"`, `"blanche"` | Couleur du verre |
+| `bottleincr` | string | `"oui"`, `"non"` | Présence d'incrustations fusionnées |
 
-#### Coiffe (max 10)
+#### Coiffe & bouchage
 
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Matière = Étain | +3 | Sobriété +1 |
-| Matière = Alu épais | +1 | Sobriété +1 |
-| Matière = Complexe alu-PE | +1 | Sobriété +1 |
-| Longueur = Longue | +1 | Sobriété +1 |
-| Collerette papier (tradi ou auto-adhésive) | +1 | Sobriété +1 |
-| Collerette plastique ou métal | +3 | Sobriété +3 |
-| Plastique thermoformé = Oui | +3 | Recyclage +1 |
+| Champ | Type | Valeurs possibles | Description |
+|---|---|---|---|
+| `coiffeMat` | string | `"etain"`, `"alu_epais"`, `"complexe"`, `"alu_fin"`, `"papier"`, `"0"` | Matière de la coiffe |
+| `coiffeSize` | string | `"longue"`, `"courte"`, `"0"` | Longueur de la coiffe |
+| `coiffecoll` | string | `"non"`, `"papier-tradi"`, `"papier-adh"`, `"plastique"`, `"metal"`, `"0"` | Type de collerette |
+| `coiffethermo` | string | `"oui"`, `"non"` | Présence d'un manchon thermoformé |
+| `capsuleType` | string | `"metalique"`, `"plastique"`, `"0"` | Matière de la plaque muselet |
+| `capsuleColor` | string | `"non"`, `"mono"`, `"mono-inf"`, `"poly"`, `"poly-inf"`, `"0"` | Niveau d'impression sur la plaque |
+| `bouchonType` | string | `"oui"`, `"non"`, `"nsp"`, `"0"` | Certification FSC/PEFC du bouchon |
+| `plaqueSeparable` | string | `"oui"`, `"non"` | Séparabilité plaque / insert plastique |
 
-#### Bouchage (max 5)
+#### Étiquetage
 
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Plaque plastique | +3 | Recyclage +1 |
-| Impressions : monochrome+inf, polychrome, ou polychrome+inf | +1 | Sobriété +1 |
-| Bouchon non issu de forêts gérées durablement | +1 | Matériaux +1 |
+| Champ | Type | Valeurs possibles | Description |
+|---|---|---|---|
+| `etiquetteCount` | string (num) | `"1"`, `"2"`, `"3"`, … | Nombre d'étiquettes distinctes |
+| `etiquetteColor` | string (num) | `"1"`, `"4"`, `"6"`, … | Nombre de couleurs d'encrage |
+| `etiquetteEcoInk` | boolean | `true`, `false` | Présence de grands aplats de couleur |
+| `etiquetteInkRatio` | string | `"<30%"`, `"30-70%"`, `">70%"` | Taux d'encrage de surface |
+| `etiquetteMat` | string | `"papierepais"`, `"papieradh"`, `"papiercoton"`, `"plastique"`, `"métal"`, `"0"` | Matière de l'étiquette principale |
+| `etiquettecontreMat` | string | (idem etiquetteMat) | Matière de la contre-étiquette |
+| `papierreshum` | boolean | `true`, `false` | Traitement REH (résistance à l'humidité) |
+| `etiquetteDor` | string | `"pasdorure"`, `"dorurefroid"`, `"dorurechaud"`, `"0"` | Type de dorure |
+| `etiquetteColle` | string | `"collestand"`, `"colleultra"`, `"collewashoff"`, `"0"` | Technologie de colle |
 
-#### Étiquette (max 11)
+#### Étuis & suremballage
 
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Nombre d'étiquettes ≥ 2 | +1 | Sobriété +1 |
-| Nombre de couleurs ≥ 3 | +1 | Sobriété +1 |
-| Aplats de couleurs cochés | +1 | Sobriété +1 |
-| Matière = Papier coton ou Métallique | +3 | Matériaux +1 |
-| Résistance à l'humide cochée | +1 | Matériaux +1 |
-| Dorure à chaud | +1 | Sobriété +1 |
-| Colle ultra-adhésive | +3 | Recyclage +1 |
+| Champ | Type | Valeurs possibles | Description |
+|---|---|---|---|
+| `etuisType` | string | `"pasetuiscoffret"`, `"commande"`, `"systematique"`, `"0"` | Mode de distribution des étuis |
+| `etuiWeight` | string (num) | `"400"`, `"900"`, … | Poids unitaire de l'étui en grammes |
+| `elementsassos` | boolean | `true`, `false` | Livrets et notices associés |
+| `etuisEcoink` | boolean | `true`, `false` | Aplats de couleur sur l'étui |
+| `etuissilkpaper` | boolean | `true`, `false` | Papier de soie interne |
+| `etuisPapier` | boolean | `true`, `false` | Composition : papier |
+| `etuisCarton` | boolean | `true`, `false` | Composition : carton |
+| `etuisBois` | boolean | `true`, `false` | Composition : bois massif |
+| `etuisPlastique` | boolean | `true`, `false` | Composition : plastique |
+| `etuisAimant` | boolean | `true`, `false` | Fermetures aimantées |
+| `suremballage` | string | `"pas_de_sac"`, `"sac_sur_demande"`, `"sac_systematique"`, `"0"` | Type de suremballage boutique |
+| `suremballageEcoink` | boolean | `true`, `false` | Aplats de couleur sur le sac |
+| `sacPapier` | boolean | `true`, `false` | Sac en papier |
+| `sacCarton` | boolean | `true`, `false` | Sac en carton |
+| `sacPlastique` | boolean | `true`, `false` | Sac en plastique |
+| `sacAimant` | boolean | `true`, `false` | Fermeture aimantée du sac |
 
-> La pénalité matière ne porte que sur l'étiquette principale. La contre-étiquette contribue uniquement au carbone.
+#### Carton d'expédition & objets
 
-#### Étuis / Coffrets (max 15)
-
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Type = Sur commande seulement | +1 | Sobriété +1 |
-| Type = Systématique | +3 | Sobriété +1 |
-| Poids ≥ 900 g | +1 | Sobriété +1 |
-| Éléments associés cochés | +1 | Sobriété +1 |
-| Aplats de couleurs cochés | +1 | Sobriété +1 |
-| Papier de soie coché | +1 | Sobriété +1 |
-| Papier cartonné coché | +1 | Matériaux +1 |
-| Carton coché | +0 | Matériaux +1 (meilleure option, pas de pénalité eco) |
-| Bois coché | +3 | Recyclage +1 |
-| Plastique coché | +1 | Matériaux +1 |
-| Aimant(s) cochés | +3 | Recyclage +1 |
-
-#### Suremballage (max 9)
-
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Type = Sacs sur demande | +1 | Sobriété +1 |
-| Type = Sacs systématiques | +3 | Sobriété +1 |
-| Aplats de couleurs cochés | +1 | Sobriété +1 |
-| Papier coché | +1 | Matériaux +1 |
-| Plastique coché | +1 | Matériaux +1 |
-| Aimant(s) cochés | +3 | Recyclage +1 |
-
-#### Carton d'expédition (max 8)
-
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Non recyclé | +1 | Matériaux +1 |
-| Cannelure double (EB ou BE) | +1 | Sobriété +1 |
-| Intercalaire mousse plastique | +3 | Matériaux +1 |
-| Intercalaire carton | +1 | Matériaux +1 |
-| Scotch plastique | +1 | Matériaux +1 |
-| Dorure à chaud | +1 | Sobriété +1 |
-| Encre huile minérale | +1 | Matériaux +1 |
-
-#### Objets publicitaires (max 3)
-
-| Condition | Points bruts | Axe |
-|-----------|-------------|-----|
-| Objet publicitaire = Oui | +3 | Sobriété +1 |
+| Champ | Type | Valeurs possibles | Description |
+|---|---|---|---|
+| `cartonRecycled` | string | `"oui"`, `"non"`, `"0"` | Fibres recyclées dans le carton |
+| `cartonCannelure` | string | `"B"`, `"E"`, `"EB"`, `"BE"`, `"0"` | Type de cannelure (simple ou double) |
+| `cartonInter` | string | `"carton"`, `"cellulose"`, `"plastique"`, `"0"` | Nature des intercalaires |
+| `cartonScotch` | string | `"plastique"`, `"papier kraft"`, `"0"` | Type d'adhésif de fermeture |
+| `cartonDor` | string | `"pasdorure"`, `"dorurefroid"`, `"dorurechaud"`, `"0"` | Dorure sur le carton |
+| `cartonInk` | string | `"huileminerale"`, `"encrevegetale"`, `"0"` | Type d'encrage carton |
+| `objet` | string | `"oui"`, `"non"`, `"0"` | Présence d'un objet publicitaire |
 
 ---
 
-### Axes transversaux
+## 5. config.js — Facteurs carbone & pénalités
 
-Trois axes synthétisent des pénalités issues de plusieurs sections :
+L'objet `BENCHMARK_CONFIG` est la **source unique de vérité** pour tous les barèmes.
 
-| Axe | Max | Formule affichée |
-|-----|-----|-----------------|
-| Sobriété | 21 | `(1 − scoresobriete / 21) × 100` |
-| Recyclage | 7 | `(1 − scorerecyclage / 7) × 100` |
-| Matériaux | 13 | `(1 − scoremateriaux / 13) × 100` |
+### `BENCHMARK_CONFIG.uncertaintyPercent`
 
-Chaque axe est visualisé par une barre dégradée rouge → vert avec un indicateur positionné en pourcentage.
+```js
+uncertaintyPercent: 8
+```
+
+Marge d'incertitude affichée sur l'estimation carbone (±8 %). Correspond aux variations de taux de calcin régional non captées par le modèle screening.
 
 ---
 
-### Empreinte carbone
+### `BENCHMARK_CONFIG.carbonFactors` — Facteurs d'émission
 
-Estimation en **gCO₂e par bouteille**, calculée par addition de contributions unitaires. Les facteurs d'émission proviennent du guide Plan de Prévention Commun Champagne 2023.
+Toutes les valeurs sont exprimées en **gCO₂e par unité** (sauf indication).
 
-#### Bouteille (verre)
+#### Verre (`glass`)
 
-```
-carbone += (poids_kg) × facteur_couleur
-```
+Facteur en **gCO₂e par kg de verre**. Multipliés par le poids de la bouteille (en kg).
 
-| Couleur | Facteur (gCO₂e/kg verre) |
-|---------|--------------------------|
-| Verte   | 680                      |
-| Brune   | 765                      |
-| Opaque  | 765                      |
-| Blanche | 1 018                    |
+| Clé | Valeur (gCO₂e/kg) | Commentaire |
+|---|---|---|
+| `verte` | 680 | Verre vert, taux de calcin élevé |
+| `brune` | 765 | Verre brun |
+| `opaque` | 765 | Verre opaque (même facteur que brun) |
+| `blanche` | 1018 | Verre blanc : moins de calcin, plus de matière vierge |
 
-#### Coiffe
+**Formule :** `co2Bottle = (poids_g / 1000) × facteur`
 
-Valeurs fixes en gCO₂e selon la combinaison matière × longueur :
+#### Coiffe (`coiffe`)
 
-| Matière | Longue | Courte |
-|---------|--------|--------|
-| Étain | 49,73 | 28,23 |
-| Alu épais | 23,2 | 13,18 |
-| Complexe alu-PE | 14,8 | 8,4 |
-| Alu fin | 10,62 | 6,03 |
-| Papier | 1,6 | 0,8 |
+Facteur en **gCO₂e par coiffe**, distinguant coiffe longue et coiffe courte.
 
-Contributions collerette (gCO₂e) : papier tradi +0,169 — papier auto-adhésif +0,437 — plastique +5,757 — métal +11,320.
+| Matière | Longue (gCO₂e) | Courte (gCO₂e) |
+|---|---|---|
+| `etain` | 49.73 | 28.23 |
+| `alu_epais` | 23.2 | 13.18 |
+| `complexe` (Alu-PE) | 14.8 | 8.4 |
+| `alu_fin` | 10.62 | 6.03 |
+| `papier` | 1.6 | 0.8 |
+
+#### Collerette (`collerette`)
+
+Facteur en **gCO₂e par collerette**.
+
+| Type | gCO₂e |
+|---|---|
+| `papier-tradi` | 0.169 |
+| `papier-adh` | 0.437 |
+| `plastique` | 5.757 |
+| `metal` | 11.320 |
 
 #### Bouchage
 
-| Élément | Contribution |
-|---------|-------------|
-| Plaque (métal ou plastique) | +5,58 gCO₂e |
-| Capsule de tirage (si poids bouteille > 0) | +8,356 gCO₂e |
-| Bouchon liège (si poids bouteille > 0) | +42,791 gCO₂e |
+| Composant | Clé | gCO₂e | Description |
+|---|---|---|---|
+| Bouchon liège | `bouchon_standard` | 42.791 | Bouchon de tirage + bouchon de finition |
+| Capsule de tirage | `capsule_tirage` | 8.356 | Capsule métallique de tirage |
+| Plaque muselet | `capsule_plaque` | 5.58 | Ajouté si une plaque est présente |
 
-#### Étiquette
+**Formule bouchage :** `co2Bouchage = capsule_tirage + bouchon_standard [+ capsule_plaque si plaque présente]`
 
-| Matière étiquette | gCO₂e | Matière contre-étiquette | gCO₂e |
-|-------------------|-------|--------------------------|-------|
-| Papier traditionnel | 0,210 | Papier traditionnel | 0,090 |
-| Papier auto-adhésif | 0,392 | Papier auto-adhésif | 0,168 |
-| Papier coton | 5,167 | Papier coton | 2,218 |
-| Plastique | 5,167 | Plastique | 2,218 |
-| Métallique | 10,160 | Métallique | 4,361 |
+#### Étiquettes (`etiquette` / `contreEtiquette`)
 
-#### Étuis / Coffrets
+Facteur en **gCO₂e par étiquette**.
 
-Contribution = `(poids_kg) × facteur_matière`. Coefficient 0,5 si distribution sur commande seulement (fréquence réduite).
+| Matière | Étiquette (gCO₂e) | Contre-étiquette (gCO₂e) |
+|---|---|---|
+| `papierepais` | 0.210 | 0.090 |
+| `papieradh` | 0.392 | 0.168 |
+| `papiercoton` | 5.167 | 2.218 |
+| `plastique` | 5.167 | 2.218 |
+| `métal` | 10.160 | 4.361 |
 
-| Matière | Facteur (gCO₂e/kg) |
-|---------|-------------------|
-| Bois | 700 |
-| Papier cartonné | 641 |
-| Carton | 932 |
-| Plastique | 3 105 |
+#### Étuis (`etuis`)
 
-#### Carton d'expédition
+Facteur en **gCO₂e par kg de matière**. Multiplié par le poids de l'étui (en kg).
 
-Divisé par 6 (nombre standard de bouteilles par caisse) :
+| Matière | gCO₂e/kg |
+|---|---|
+| `bois` | 700 |
+| `papier` | 641 |
+| `carton` | 932 |
+| `plastique` | 3105 |
 
-| Cannelure | gCO₂e/caisse |
-|-----------|-------------|
-| Simple B ou E | 211 / 6 ≈ 35,2 |
-| Double EB ou BE | 321 / 6 = 53,5 |
+Quand plusieurs matières coexistent, les facteurs s'additionnent.  
+Si aucune matière n'est cochée, le facteur `carton` (932) est utilisé par défaut.  
+**Réduction de 50 %** si le mode de distribution est `"commande"` (sur demande).
 
-| Intercalaire | gCO₂e/caisse |
-|--------------|-------------|
-| Carton | 55,91 / 6 ≈ 9,3 |
-| Cellulose moulée | 109,95 / 6 ≈ 18,3 |
-| Mousse plastique | 9,75 / 6 ≈ 1,6 |
+#### Carton d'expédition (`cartonCannelure`, `cartonInter`)
+
+| Composant | Clé | gCO₂e | Condition |
+|---|---|---|---|
+| Cannelure simple | `cartonCannelure.single` | 35.167 | Cannelure B ou E |
+| Cannelure double | `cartonCannelure.double` | 53.500 | Cannelure EB ou BE |
+| Intercalaire carton | `cartonInter.carton` | 9.318 | — |
+| Intercalaire cellulose | `cartonInter.cellulose` | 18.325 | — |
+| Intercalaire plastique | `cartonInter.plastique` | 1.625 | — |
+
+#### Suremballage (sacs boutique)
+
+Valeurs forfaitaires en **gCO₂e par sac** :
+
+| Condition | gCO₂e | Réduction si sur demande |
+|---|---|---|
+| Sac papier | 15 | × 0.3 → 4.5 |
+| Sac plastique | 45 | × 0.3 → 13.5 |
+| Autre | 10 | × 0.3 → 3.0 |
 
 ---
 
-### Score global pondéré multi-cuvées
+### `BENCHMARK_CONFIG.penalties` — Pénalités de scoring
 
-Lorsque plusieurs cuvées ont été calculées, un **score global pondéré** est affiché dans la barre supérieure :
+Les pénalités sont des points **retranchés** au score. Elles s'accumulent par module.
 
+#### Module Bouteille (`bottle`)
+
+| Paramètre | Valeur | Description |
+|---|---|---|
+| `minWeight` | 835 | Seuil bas (poids cible recommandé, g) |
+| `maxWeight` | 900 | Seuil haut (pénalité maximale à partir de ce poids, g) |
+| `maxPenalty` | 3.0 | Pénalité maximale pour poids excessif |
+| `specialDiscount` | 0.5 | Réduction de 50 % pour flacons de prestige (`special`) |
+| `opaquePenalty` | 3.0 | Pénalité verre opaque |
+| `blanchePenalty` | 3.0 | Pénalité verre blanc |
+| `incrPenalty` | 3.0 | Pénalité incrustations fusionnées |
+
+**Pénalité poids — calcul interpolé :**
 ```
-Si au moins une cuvée a un volume (nb bouteilles) renseigné :
-  score_global = Σ(score_i × nb_i) / Σ(nb_i)   [moyenne pondérée]
-
-Sinon :
-  score_global = Σ(score_i) / n                  [moyenne simple]
+ratio = min(1.0, (poids - 835) / (900 - 835))
+si flacon special : ratio = ratio × (1 - 0.5) = ratio × 0.5
+pénalité = ratio × 3.0
 ```
+Exemple : 870 g standard → ratio = 35/65 = 0.538 → pénalité = 1.62 pts
+
+#### Module Coiffe (`coiffe`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `etainPenalty` | 3.0 | Coiffe en étain |
+| `aluEpaisPenalty` | 1.0 | Coiffe alu épais |
+| `complexePenalty` | 1.0 | Coiffe composite Alu-PE |
+| `longuePenalty` | 1.0 | Coiffe longue |
+| `collerettePapierPenalty` | 1.0 | Collerette papier (tradi ou adh) |
+| `collerettePlastiqueMetalPenalty` | 3.0 | Collerette plastique ou métal |
+| `thermoPenalty` | 3.0 | Manchon thermoformé |
+
+#### Module Bouchage (`bouchage`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `plastiquePenalty` | 3.0 | Plaque muselet plastique |
+| `impressionsPenalty` | 1.0 | Impressions complexes (poly, mono-inf, poly-inf) |
+| `nonDurableBouchonPenalty` | 1.0 | Bouchon non certifié FSC/PEFC |
+| `nonSeparablePlaquePenalty` | 2.0 | Insert plastique non séparable de la plaque |
+
+#### Module Étiquetage (`etiquette`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `multipleLabelsPenalty` | 1.0 | ≥ 2 étiquettes |
+| `manyColorsPenalty` | 1.0 | ≥ 3 couleurs |
+| `ecoInkPenalty` | 1.0 | Grands aplats de couleur |
+| `highEncragePenalty` | 2.0 | Ratio d'encrage > 70 % |
+| `unrecyclableMaterialPenalty` | 3.0 | Matière papier coton, métal ou plastique |
+| `humidResistPenalty` | 1.0 | Traitement REH |
+| `hotDorePenalty` | 1.0 | Dorure à chaud |
+| `ultraCollePenalty` | 3.0 | Colle ultra-adhésive (PSA) |
+| `washOffBonus` | **-1.0** | Colle Wash-Off (bonus, déduit de la pénalité) |
+
+#### Module Étuis (`etuis`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `systematiquePenalty` | 3.0 | Distribution systématique |
+| `unitaireHeavyPenalty` | 1.0 | Poids étui ≥ 900 g |
+| `assosPenalty` | 1.0 | Éléments associés (livrets, notices) |
+| `aplatPenalty` | 1.0 | Aplats de couleur |
+| `silkPaperPenalty` | 1.0 | Papier de soie interne |
+| `boisPenalty` | 3.0 | Présence de bois |
+| `plastiquePenalty` | 1.0 | Présence de plastique |
+| `aimantPenalty` | 3.0 | Fermetures aimantées |
+
+#### Module Suremballage (`suremballage`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `commissionPenalty` | 1.0 | Sac distribué sur demande |
+| `systematiquePenalty` | 3.0 | Sac distribué systématiquement |
+| `aplatPenalty` | 1.0 | Aplats de couleur sur le sac |
+| `plastiquePenalty` | 1.0 | Sac plastique |
+| `aimantPenalty` | 3.0 | Fermeture aimantée |
+
+#### Module Carton (`carton`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `nonRecycledPenalty` | 1.0 | Fibres vierges (non recyclées) |
+| `doubleCannelurePenalty` | 1.0 | Double cannelure (EB ou BE) |
+| `plastiqueInterPenalty` | 3.0 | Intercalaire plastique |
+| `cartonInterPenalty` | 1.0 | Intercalaire carton |
+| `plastiqueScotchPenalty` | 1.0 | Scotch plastique |
+| `hotDorePenalty` | 1.0 | Dorure à chaud sur carton |
+| `mineralInkPenalty` | 1.0 | Encres minérales (MOSH/MOAH) |
+
+#### Module Objet publicitaire (`objet`)
+
+| Paramètre | Valeur | Déclencheur |
+|---|---|---|
+| `presencePenalty` | 3.0 | Présence d'un objet promotionnel |
 
 ---
 
-## 3. Référence des fichiers
-
-### index.html
-
-Page unique de l'application. Aucun framework, aucun build. Structure du DOM :
-
-```
-<body>
-  .header                   Logos Adelphe + CIVC + titre
-  #topBar                   Barre unifiée (flex-shrink:0)
-    .topbar-controls        Boutons Sauvegarder / Sélecteur cuvée / Modifier
-    #scoresBar              Carte score global + cartes par cuvée (générées par JS)
-  #cuveePopup               Popup modale (position:fixed) — gestion de la gamme
-  #resultsPanel             Panneau résultats horizontal (caché jusqu'au 1er calcul)
-    .rp-embascore           Score global + détail 8 composants en grille 2×4
-    .rp-radar               Canvas Chart.js radar
-    .rp-axes                3 barres Sobriété/Recyclage/Matériaux + CO₂
-    .rp-advises             Liste des points d'amélioration
-  #diagnosticFormContainer  Grille formulaire (flex:1, remplit le reste du viewport)
-    .form-wrapper
-      .form-grid            2 colonnes d'accordéons (overflow-y:auto)
-        .form-col           Gauche : Bouteille, Coiffe, Bouchage, Étiquette
-        .form-col           Droite : Étuis, Suremballage, Carton, Objets pub.
-      .form-actions         Boutons Calculer / Exporter / Charger / PDF
-```
-
-**IDs importants référencés par JS :**
-
-| ID | Rôle |
-|----|------|
-| `bottleWeight`, `bottleshape`, `bottlecolor`, `bottleincr` | Champs Bouteille |
-| `coiffeMat`, `coiffeSize`, `coiffecoll`, `coiffethermo` | Champs Coiffe |
-| `capsuleType`, `capsuleColor`, `bouchonType` | Champs Bouchage |
-| `etiquetteCount`, `etiquetteColor`, `etiquetteEcoInk`, `etiquetteMat`, `etiquettecontreMat`, `papierreshum`, `etiquetteDor`, `etiquetteColle` | Champs Étiquette |
-| `etuisType`, `etuiWeight`, `elementsassos`, `etuisEcoink`, `etuissilkpaper`, `etuisPapier`, `etuisCarton`, `etuisBois`, `etuisPlastique`, `etuisAimant` | Champs Étuis |
-| `suremballage`, `suremballageEcoink`, `sacPapier`, `sacCarton`, `sacPlastique`, `sacAimant` | Champs Suremballage |
-| `cartonRecycled`, `cartonCannelure`, `cartonInter`, `cartonScotch`, `cartonDor`, `cartonInk` | Champs Carton |
-| `objet` | Champ Objets pub. |
-| `cuveeSelect` | Sélecteur de cuvée active |
-| `embascore` | Affichage EmbaScore |
-| `indicebottle` … `indiceobjet` | Scores par composant |
-| `indicesobriete`, `indicerecyclage`, `indicemateriaux` | Labels axes transversaux |
-| `Sobriété-indicator`, `Recyclage-indicator`, `Matériaux-indicator` | Indicateurs barres axes |
-| `indicecarbone` | Affichage empreinte carbone |
-| `diagnosisAdvise` | Liste `<ul>` des points d'amélioration |
-| `radarChart` | Canvas du graphique radar |
-| `rp-cuvee-name` | Nom de la cuvée dans le titre du panneau résultats |
-| `scoresBar` | Zone des cartes de scores (topbar) |
-| `resultsPanel` | Panneau résultats horizontal |
-| `csvFileInput` | Input fichier CSV (masqué) |
-
----
-
-### js/scripts.js
-
-Contient tous les calculs et la logique d'affichage des résultats.
-
-#### Variable globale
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `radarChartInstance` | `Chart \| null` | Instance Chart.js en cours. Détruite et recréée à chaque calcul pour éviter les fuites mémoire. |
-
-#### Fonctions
-
----
-
-##### `calculateDiagnosis()`
-
-Fonction principale appelée par le bouton **Calculer les résultats**. Lecture du DOM → calcul des scores → affichage → persistence.
-
-**Variables locales — Entrées formulaire**
-
-Toutes lues via `document.getElementById(...).value` ou `.checked` :
-
-| Variable | Type JS | Champ source |
-|----------|---------|--------------|
-| `bottleWeight` | `number` (parseFloat) | `#bottleWeight` |
-| `bottleshape` | `string` | `#bottleshape` |
-| `bottlecolor` | `string` | `#bottlecolor` |
-| `bottleincr` | `string` | `#bottleincr` |
-| `coiffeMat` | `string` | `#coiffeMat` |
-| `coiffeSize` | `string` | `#coiffeSize` |
-| `coiffecoll` | `string` | `#coiffecoll` |
-| `coiffethermo` | `string` | `#coiffethermo` |
-| `capsuleType` | `string` | `#capsuleType` |
-| `capsuleColor` | `string` | `#capsuleColor` |
-| `bouchonType` | `string` | `#bouchonType` |
-| `etiquetteCount` | `number` (parseInt \|\| 0) | `#etiquetteCount` |
-| `etiquetteColor` | `number` (parseInt \|\| 0) | `#etiquetteColor` |
-| `etiquetteEcoInk` | `boolean` | `#etiquetteEcoInk` (checkbox) |
-| `etiquetteMat` | `string` | `#etiquetteMat` |
-| `etiquettecontreMat` | `string` | `#etiquettecontreMat` |
-| `papierreshum` | `boolean` | `#papierreshum` (checkbox) |
-| `etiquetteDor` | `string` | `#etiquetteDor` |
-| `etiquetteColle` | `string` | `#etiquetteColle` |
-| `etuisType` | `string` | `#etuisType` |
-| `etuiWeight` | `number` (parseFloat \|\| 0) | `#etuiWeight` |
-| `elementsassos` | `boolean` | `#elementsassos` |
-| `etuisEcoink` | `boolean` | `#etuisEcoink` |
-| `etuissilkpaper` | `boolean` | `#etuissilkpaper` |
-| `etuisPapier` | `boolean` | `#etuisPapier` |
-| `etuisCarton` | `boolean` | `#etuisCarton` |
-| `etuisBois` | `boolean` | `#etuisBois` |
-| `etuisPlastique` | `boolean` | `#etuisPlastique` |
-| `etuisAimant` | `boolean` | `#etuisAimant` |
-| `suremballage` | `string` | `#suremballage` |
-| `suremballageEcoink` | `boolean` | `#suremballageEcoink` |
-| `sacPapier` | `boolean` | `#sacPapier` |
-| `sacCarton` | `boolean` | `#sacCarton` |
-| `sacPlastique` | `boolean` | `#sacPlastique` |
-| `sacAimant` | `boolean` | `#sacAimant` |
-| `cartonRecycled` | `string` | `#cartonRecycled` |
-| `cartonCannelure` | `string` | `#cartonCannelure` |
-| `cartonInter` | `string` | `#cartonInter` |
-| `cartonScotch` | `string` | `#cartonScotch` |
-| `cartonDor` | `string` | `#cartonDor` |
-| `cartonInk` | `string` | `#cartonInk` |
-| `objet` | `string` | `#objet` |
-
-**Variables locales — Accumulateurs de scores**
-
-| Variable | Max théorique | Description |
-|----------|--------------|-------------|
-| `scorebottle` | 9 | Points de pénalité section Bouteille |
-| `scorecoiffe` | 10 | Points de pénalité section Coiffe |
-| `scorebouchage` | 5 | Points de pénalité section Bouchage |
-| `scoreetiquette` | 11 | Points de pénalité section Étiquette |
-| `scoreetuis` | 15 | Points de pénalité section Étuis |
-| `scoresuremb` | 9 | Points de pénalité section Suremballage |
-| `scorecarton` | 8 | Points de pénalité section Carton |
-| `scoreobjet` | 3 | Points de pénalité section Objets pub. |
-| `scoresobriete` | 21 | Points de pénalité axe Sobriété (transversal) |
-| `scorerecyclage` | 7 | Points de pénalité axe Recyclage (transversal) |
-| `scoremateriaux` | 13 | Points de pénalité axe Matériaux (transversal) |
-| `scorecarbone` | — | Empreinte carbone cumulée en gCO₂e/bouteille |
-| `advises` | — | Tableau des messages de recommandation |
-
-**Variables locales — Scores calculés**
-
-| Variable | Formule | Description |
-|----------|---------|-------------|
-| `totalRaw` | `Σ score_section` | Somme brute globale (max 70) |
-| `score` | `arrondi((1 − totalRaw/70) × 100)` | EmbaScore affiché |
-| `pctBottle` … `pctObjet` | `arrondi((1 − score_section/max) × 100)` | Scores composants en % |
-| `pctSobriete` | `arrondi((1 − scoresobriete/21) × 100)` | Axe Sobriété en % |
-| `pctRecyclage` | `arrondi((1 − scorerecyclage/7) × 100)` | Axe Recyclage en % |
-| `pctMateriaux` | `arrondi((1 − scoremateriaux/13) × 100)` | Axe Matériaux en % |
-
----
-
-##### `renderRadarChart(scores)`
-
-Crée ou recrée le graphique radar Chart.js.
-
-| Paramètre | Type | Description |
-|-----------|------|-------------|
-| `scores` | `number[]` | Tableau de 8 pourcentages : `[pctBottle, pctCoiffe, pctBouchage, pctEtiquette, pctEtuis, pctSuremb, pctCarton, pctObjet]` |
-
-Utilise `radarChartInstance` (variable globale) pour détruire le graphique précédent avant d'en créer un nouveau. Les points sont colorés en vert (≥ 80 %), orange (≥ 60 %), rouge (< 60 %).
-
----
-
-##### `setScoreIndicator(id, scorecolor)`
-
-Positionne l'indicateur circulaire sur une barre de score.
-
-| Paramètre | Type | Description |
-|-----------|------|-------------|
-| `id` | `string` | ID de l'élément indicateur (`Sobriété-indicator`, etc.) |
-| `scorecolor` | `number` | Valeur en % (0–100). Traduit directement en `left: X%` |
-
----
-
-##### `setValueColor(id, pct)`
-
-Applique un badge coloré (fond + texte) à un élément de score composant.
-
-| Paramètre | Seuil | Couleur texte | Fond |
-|-----------|-------|--------------|------|
-| `pct ≥ 80` | Vert | `#15803d` | `#dcfce7` |
-| `pct ≥ 60` | Orange | `#b45309` | `#fef3c7` |
-| `pct < 60` | Rouge | `#b91c1c` | `#fee2e2` |
-
----
-
-##### `updateScoresBar()`
-
-Regénère le contenu HTML de `#scoresBar` (dans `#topBar`).
-
-- Filtre `cuveeData` pour ne garder que les cuvées ayant un `score` stocké.
-- Si aucune : affiche un texte placeholder.
-- Calcule le score global pondéré (ou moyenne simple si aucun volume).
-- Génère une carte `.score-card.global` et une carte `.score-card` par cuvée calculée.
-- Chaque carte cuvée a un `onclick` qui charge cette cuvée dans le formulaire.
-- La carte de la cuvée active reçoit la classe `.active`.
-
-**Variables locales**
-
-| Variable | Description |
-|----------|-------------|
-| `scored` | Sous-tableau de `cuveeData` ayant un champ `score` |
-| `totalW` | Somme pondérée `Σ(score × nb)` |
-| `totalNb` | Somme des volumes `Σ(nb)` |
-| `isWeighted` | `true` si au moins une cuvée a un volume > 0 |
-| `globalScore` | Score global calculé |
-| `activeCuveeId` | Valeur courante du `#cuveeSelect` |
-
----
-
-##### `viewPDF()`
-
-Ouvre le guide PDF dans un nouvel onglet : `media/plan-de-prevention-commun-champagne_2023.pdf`.
-
----
-
-##### Bloc d'initialisation des accordéons (code immédiat)
-
-Boucle exécutée au chargement. Pour chaque bouton `.accordion` :
-- Ferme tous les autres panneaux (retire la classe `active`, `display: none`).
-- Toggle le panneau courant.
-- Ajoute la classe `panel-entering` pour déclencher l'animation CSS, retirée après 200 ms.
-
----
-
-### js/poptabledata.js
-
-Gère le cycle de vie des données cuvées : création, lecture, mise à jour, persistance localStorage, et popup de gestion.
-
-#### Variables globales
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `cuveeData` | `Array<Object>` | Tableau principal. Chaque objet : `{ id: number, name: string, nb: string, diagnostic: Object, score?: number }` |
-| `cuveeIdCounter` | `number` | Compteur auto-incrémenté pour générer des IDs uniques de cuvée |
-
-**Structure d'un objet `diagnostic`** (44 champs) — miroir exact des champs du formulaire, tous stockés en `string` ou `boolean`. Voir la liste complète dans `saveDiagnostic()`.
-
-#### Fonctions
-
----
-
-##### `persistData()`
-
-Sérialise `cuveeData` et `cuveeIdCounter` en JSON dans `localStorage` sous les clés `embaDiag_cuveeData` et `embaDiag_cuveeIdCounter`. Silencieux en cas d'échec (contexte file://, mode privé, etc.).
-
----
-
-##### `loadPersistedData()`
-
-Appelée au `DOMContentLoaded`. Lit `localStorage`, désérialise, puis appelle `updateCuveeDropdown()` et `updateScoresBar()` pour restaurer l'état visuel complet de la session précédente.
-
----
-
-##### `saveCuvees()`
-
-Callback du bouton de fermeture de la popup. Lit les lignes du tableau `#cuveeTable` :
-- Met à jour `nb` des cuvées existantes (recherche par nom).
-- Ajoute les nouvelles cuvées avec `diagnostic: {}` et `id: cuveeIdCounter++`.
-- Appelle `persistData()`, `updateCuveeDropdown()`, `closePopup()`.
-
----
-
-##### `openPopup()`
-
-Affiche `#cuveePopup` (`display: flex`). Reconstruit le tableau HTML depuis `cuveeData`. Ajoute une ligne vide si le tableau est vide.
-
----
-
-##### `closePopup()`
-
-Masque `#cuveePopup` (`display: none`).
-
----
-
-##### `addNewRow()`
-
-Insère une ligne vide éditable dans le tableau de la popup et place le focus sur la première cellule.
-
----
-
-##### `updateCuveeDropdown()`
-
-Reconstruit les `<option>` du `#cuveeSelect`. Chaque option a `value = cuvee.id` et affiche le nom + le volume formaté en français (`toLocaleString('fr-FR')`).
-
----
-
-##### `loadCuveeData()`
-
-Appelée au changement de `#cuveeSelect`. Trouve la cuvée dont `id == select.value`, puis affecte chacun de ses 44 champs diagnostic aux éléments du formulaire correspondants. Valeurs manquantes remplacées par `''` ou `'0'` selon le type de champ. Termine par `updateScoresBar()` pour mettre à jour la carte active.
-
----
-
-##### `saveDiagnostic()`
-
-Appelée par le bouton Sauvegarder et par le bouton Calculer. Lit les 44 champs du formulaire et les stocke dans `selectedCuvee.diagnostic`. Alerte si aucune cuvée n'est sélectionnée. Termine par `persistData()`.
-
----
-
-##### Bloc `DOMContentLoaded` — Infobulles
-
-Initialise les infobulles sur tous les éléments `.tooltip-icon` :
-- `mouseenter` : crée un `div.tooltip-box`, le positionne en absolu via `getBoundingClientRect()` + `window.scrollY`, l'ajoute au `<body>`.
-- `mouseleave` : supprime le `div.tooltip-box` du DOM.
-
----
-
-### js/saveResults.js
-
-Gère l'export et l'import CSV (format RFC 4180, BOM UTF-8 pour compatibilité Excel).
-
-#### Fonctions
-
----
-
-##### `saveResults()`
-
-Génère un fichier CSV et déclenche son téléchargement.
-
-- En-têtes : 45 colonnes (nom cuvée, volume, puis les 43 champs diagnostic).
-- Corps : une ligne par cuvée dans `cuveeData` (toutes les cuvées, pas seulement la cuvée active).
-- Toutes les valeurs sont encapsulées par `csvCell()`.
-- Crée un `Blob` `text/csv;charset=utf-8` avec BOM `﻿`, génère une URL objet et simule un clic.
-
----
-
-##### `csvCell(value)`
-
-Formate une valeur pour CSV RFC 4180 : convertit en chaîne, entoure de guillemets doubles, double les guillemets internes (`"` → `""`).
-
----
-
-##### `loadCSV(event)`
-
-Callback du `<input type="file" id="csvFileInput">`. Lit le fichier sélectionné avec `FileReader` en UTF-8, passe le texte à `parseCSV()`. Réinitialise `event.target.value` pour permettre le rechargement du même fichier.
-
----
-
-##### `parseCSVLine(line)`
-
-Parseur de ligne CSV robuste gérant les guillemets, les virgules dans les valeurs et les guillemets doublés.
-
-| Paramètre | Type | Description |
-|-----------|------|-------------|
-| `line` | `string` | Une ligne brute du CSV |
-
-Retourne `string[]` — tableau des cellules de la ligne.
-
----
-
-##### `parseCSV(csvText)`
-
-Parseur de fichier complet.
-
-1. Supprime le BOM éventuel.
-2. Découpe en lignes, ignore les lignes vides.
-3. Ignore la ligne d'en-tête (index 0).
-4. Pour chaque ligne : construit un objet `{ id, name, nb, diagnostic }` via `parseCSVLine()`.
-5. Convertit les champs booléens (`'Oui'` → `true`).
-6. Remplace entièrement `cuveeData`, recalcule `cuveeIdCounter`.
-7. Appelle `persistData()`, `updateCuveeDropdown()`, `updateScoresBar()`.
-
----
-
-### css/styles.css
-
-Design system complet en vanilla CSS. Utilise des variables CSS (`--primary`, `--gold`, `--bg`, etc.) et Google Fonts Inter.
-
-#### Variables CSS (`:root`)
-
-| Variable | Valeur | Usage |
-|----------|--------|-------|
-| `--primary` | `#0077c8` | Bleu CIVC, boutons, focus |
-| `--primary-dark` | `#005a9e` | Hover, titres |
-| `--primary-light` | `#e8f4fd` | Fonds clairs, zone contrôles |
-| `--gold` | `#c9a227` | Or champagne, accordéon actif, CTA |
-| `--gold-dark` | `#9c7d1e` | Hover gold |
-| `--gold-light` | `#fdf6e3` | Fond carte cuvée active |
-| `--bg` | `#f0f4f8` | Fond page |
-| `--surface` | `#ffffff` | Fond cartes et panneaux |
-| `--border` | `#e2e8f0` | Bordures et séparateurs |
-| `--text` | `#1a2332` | Texte principal |
-| `--text-muted` | `#64748b` | Labels, titres de section |
-| `--radius` | `12px` | Border-radius standard |
-| `--shadow` | — | Ombre card légère |
-| `--shadow-lg` | — | Ombre popup |
-
-#### Sections principales du CSS
-
-| Sélecteur | Description |
-|-----------|-------------|
-| `body` | `height: 100vh; overflow: hidden; display: flex; flex-direction: column` — layout viewport-filling |
-| `.header` | `flex-shrink: 0` — reste visible, ne compresse pas |
-| `#topBar` | Barre unifiée flex : `.topbar-controls` (fond bleu clair) + `.topbar-scores` (scrollable) |
-| `.results-panel` | `flex-shrink: 0; max-height: 170px` — panneau résultats compact, caché (`display:none`) jusqu'à la classe `.visible` |
-| `#diagnosticFormContainer` | `flex: 1; min-height: 0` — remplit l'espace restant |
-| `.form-wrapper` | `flex: 1; min-height: 0; display: flex; flex-direction: column` |
-| `.form-grid` | `flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr` |
-| `.form-col` | `overflow-y: auto; scrollbar-width: thin` — défilement interne des accordéons |
-| `.accordion` | Dégradé bleu → or champagne au survol/actif ; flèche `▸` animée |
-| `.score-bar` | Barre de 5 segments colorés (rouge → vert foncé), indicateur positionné en `%` |
-| `.score-card` | Carte de score cuvée dans la topbar (cliquable) |
-| `.score-card.global` | Carte score global (non cliquable, fond bleu clair) |
-| `.rp-section` | Section du panneau résultats : `flex: 1; border-left` séparateur |
-| `.popup` | `position: fixed; backdrop-filter: blur(4px)` — overlay modale |
-
----
-
-## 4. Dépendances
-
-| Dépendance | Version | Usage |
-|------------|---------|-------|
-| [Chart.js](https://www.chartjs.org/) | CDN `jsdelivr` | Graphique radar |
-| [Google Fonts — Inter](https://fonts.google.com/specimen/Inter) | CDN | Typographie |
-
-Aucun framework JavaScript ni bundler. L'application fonctionne en ouvrant `index.html` directement dans un navigateur (y compris en `file://`), à l'exception de la persistance localStorage qui peut être indisponible selon les restrictions du navigateur en mode fichier local.
-
----
-
-## 5. Déploiement
-
-Placer les fichiers tels quels sur tout serveur web statique (Apache, Nginx, GitHub Pages, etc.). Aucune compilation ni configuration serveur requise.
-
-```
-cp -r OAD_EmbaDiag/ /var/www/html/embadiag/
+## 6. calculations.js — Moteur de calcul
+
+### Fonction `calculateDiagnostic(d)`
+
+Prend en entrée un objet `diagnostic` (voir §4) et retourne un objet résultat complet.
+
+#### Valeurs retournées
+
+```js
+{
+  // Scores globaux et par module (0 à 100)
+  score,           // Score global EmbaDiag
+  scoreBottle,     // Score module Bouteille
+  scoreCoiffe,     // Score module Coiffe
+  scoreBouchage,   // Score module Bouchage
+  scoreEtiquette,  // Score module Étiquetage
+  scoreEtuis,      // Score module Étuis
+  scoreSuremb,     // Score module Suremballage
+  scoreCarton,     // Score module Carton
+  scoreObjet,      // Score module Objet
+
+  // Scores RSE transversaux (0 à 100)
+  scoreSobriete,   // Axe Sobriété
+  scoreRecyclage,  // Axe Recyclabilité
+  scoreMateriaux,  // Axe Ressources Matières
+
+  // Bilan carbone
+  carbonGCo2,                // Total gCO₂e par bouteille
+  carbonUncertaintyPercent,  // Marge d'incertitude (8)
+
+  // Conseils textuels
+  advises,  // string[] : liste des recommandations
+
+  // Pénalités brutes (pour débogage)
+  rawPenalties: {
+    bottle, coiffe, bouchage, etiquette, etuis, suremb, carton, objet,
+    sobriete, recyclage, materiaux
+  }
+}
 ```
 
-Les données utilisateur sont stockées exclusivement dans le `localStorage` du navigateur — aucune base de données ni API backend. L'export CSV permet la sauvegarde et le partage des diagnostics entre postes.
+#### Formule de calcul des scores par module
+
+```
+score_module = max(0, min(100, round((1 - pénalité_module / plafond_module) × 100)))
+```
+
+**Plafonds par module :**
+
+| Module | Plafond | Pénalité max théorique |
+|---|---|---|
+| Bouteille | 9 | 3 (poids) + 3 (opaque) + 3 (incrustations) |
+| Coiffe | 10 | 3 + 1 + 1 + 1 + 3 + 1 = 10 |
+| Bouchage | 7 | 3 + 1 + 1 + 2 = 7 |
+| Étiquette | 12 | 1+1+1+2+3+1+1+3 = 13, bonus -1 wash-off |
+| Étuis | 15 | 3+1+1+1+1+3+1+3 = 14 |
+| Suremballage | 9 | 3+1+1+3 = 8 |
+| Carton | 8 | 1+1+3+1+1+1+1 = 9 |
+| Objet | 3 | 3 |
+
+#### Formule du score global
+
+```
+totalRaw = somme des pénalités des 8 modules
+score = max(0, min(100, round((1 - totalRaw / 70) × 100)))
+```
+
+Le dénominateur **70** est la somme des plafonds théoriques de tous les modules.
+
+#### Paliers de classe
+
+| Score | Classe | Couleur |
+|---|---|---|
+| ≥ 80 | Classe A — Éco-conçu | Vert |
+| 60–79 | Classe B — Améliorable | Or |
+| < 60 | Classe C — Pénalisé | Rouge |
 
 ---
 
-*Développé par le Comité Interprofessionnel du Vin de Champagne (CIVC) dans le cadre du déploiement du Plan de Prévention Commun Champagne 2023.*
+### Fonction `simulateWhatIf(current)`
+
+Génère un objet diagnostic « idéal » à partir de la cuvée courante, en appliquant les meilleures pratiques :
+
+| Champ modifié | Valeur optimale |
+|---|---|
+| `bottleWeight` | `'835'` |
+| `bottleshape` | `'standard'` |
+| `bottlecolor` | conservé sauf blanc → vert |
+| `bottleincr` | `'non'` |
+| `coiffeMat` | `'papier'` |
+| `coiffeSize` | `'courte'` |
+| `coiffecoll` | `'non'` |
+| `coiffethermo` | `'non'` |
+| `capsuleType` | `'metalique'` |
+| `bouchonType` | `'oui'` |
+| `plaqueSeparable` | `'oui'` |
+| `etiquetteCount` | `'1'` |
+| `etiquetteEcoInk` | `false` |
+| `etiquetteMat` | `'papierepais'` |
+| `papierreshum` | `false` |
+| `etiquetteDor` | `'pasdorure'` |
+| `etiquetteColle` | `'collewashoff'` |
+| `etuisType` | `'pasetuiscoffret'` |
+| `suremballage` | `'pas_de_sac'` |
+| `cartonRecycled` | `'oui'` |
+| `cartonCannelure` | `'B'` |
+| `cartonInter` | `'cellulose'` |
+| `cartonScotch` | `'papier kraft'` |
+| `cartonInk` | `'encrevegetale'` |
+| `objet` | `'non'` |
+
+---
+
+### Fonction `createDefaultDiagnostic()`
+
+Retourne un objet diagnostic pré-rempli représentant une cuvée "moyenne négative" (valeurs courantes mais non optimales), utilisé lors de la création d'une nouvelle cuvée :
+
+- Bouteille 900 g, verte, standard, sans incrustations
+- Coiffe complexe longue, collerette papier traditionnel
+- Plaque métallique, bouchon non certifié, plaque inséparable
+- 2 étiquettes, 4 couleurs, aplats, papier auto-adhésif, REH, dorure chaud, colle ultra
+- Étui systématique 400 g
+- Suremballage sur demande, sac papier
+- Carton recyclé, double cannelure EB, intercalaire carton, scotch plastique, encre minérale
+- Sans objet publicitaire
+
+---
+
+## 7. csv.js — Import / Export
+
+### `exportToCSV(cuvees)`
+
+Génère et télécharge un fichier `embadiag_export.csv`.
+
+- **Encodage :** UTF-8 avec BOM (compatible Excel français)
+- **Séparateur :** virgule `,`
+- **44 colonnes** correspondant à tous les champs du diagnostic + nom et volume de la cuvée
+- Les booléens sont exportés en `"Oui"` / `"Non"`
+
+### `parseCSV(text)`
+
+Recharge un fichier CSV exporté par EmbaDiag.
+
+- Lit la ligne d'en-tête (ignorée, mais requise)
+- Reconstruit l'objet `diagnostic` depuis les colonnes en positionnement fixe
+- Les booléens `"Oui"` / `"true"` / `"1"` sont convertis en `true`
+- Retourne un tableau de cuvées compatible avec l'état React
+
+### `parseCSVLine(line)`
+
+Parseur CSV interne gérant les champs entre guillemets et les guillemets doublés (standard RFC 4180).
+
+### `csvCell(v)`
+
+Formate une valeur en cellule CSV (entoure de guillemets, échappe les guillemets internes).
+
+---
+
+## 8. index.html — Composants React
+
+### Composant `App`
+
+Composant racine. Gère l'état global de l'application via `useState`.
+
+**État :**
+- `cuvees` : tableau de toutes les cuvées (chacune enrichie de `score` et `result`)
+- `selectedId` : identifiant de la cuvée active
+- `modalOpen` : visibilité de la modale de gestion de gamme
+- `csvError` : message d'erreur en cas d'échec d'import CSV
+- `showWhatIf` : visibilité de la modale What-If
+
+**Handlers principaux :**
+- `handleDiagChange(newData)` : met à jour le diagnostic de la cuvée active, recalcule le score, persiste
+- `handleCatalogSave(newCat)` : remplace la gamme complète après édition
+- `handleLoadCSV(e)` : parse un fichier CSV et remplace la gamme
+- `handleApplyWhatIf()` : applique le diagnostic optimisé à la cuvée active
+
+---
+
+### Composant `WizardTunnel`
+
+Formulaire en 5 étapes pour saisir les caractéristiques de l'emballage.
+
+**Étape 1 — Flacon & Matière**  
+→ Champs : `bottleWeight`, `bottleshape`, `bottlecolor`, `bottleincr`
+
+**Étape 2 — Bouchage & Coiffe**  
+→ Champs : `coiffeMat`, `coiffeSize`, `coiffecoll`, `coiffethermo`, `capsuleType`, `plaqueSeparable`, `capsuleColor`, `bouchonType`
+
+**Étape 3 — Étiquetage & Colle**  
+→ Champs : `etiquetteCount`, `etiquetteColor`, `etiquetteEcoInk`, `etiquetteInkRatio`, `etiquetteMat`, `etiquettecontreMat`, `papierreshum`, `etiquetteDor`, `etiquetteColle`
+
+**Étape 4 — Étuis & Sacs**  
+→ Champs : `etuisType`, `etuiWeight`, `elementsassos`, `etuisEcoink`, `etuissilkpaper`, `etuisBois`, `etuisPlastique`, `etuisPapier`, `etuisCarton`, `etuisAimant`, `suremballage`, `suremballageEcoink`, `sacPapier`, `sacCarton`, `sacPlastique`, `sacAimant`
+
+**Étape 5 — Expédition & Pub**  
+→ Champs : `cartonRecycled`, `cartonCannelure`, `cartonInter`, `cartonScotch`, `cartonInk`, `objet`, `cartonDor`
+
+**Sous-composants internes** (définis dans WizardTunnel, accèdent à `data` et `up` par closure) :
+- `Sel({ label, name, opts, hint })` : `<select>` contrôlé
+- `Num({ label, name, placeholder, hint, disabled })` : `<input type="number">` contrôlé
+- `Chk({ id, label, name })` : `<input type="checkbox">` contrôlé
+
+---
+
+### Composant `BottleVisualizer`
+
+Rendu SVG de la bouteille avec visualisation temps réel des anomalies.
+
+**Logique d'alerte visuelle :**
+
+| Condition | Signal visuel |
+|---|---|
+| Poids ≥ 900 g | Contour rouge épais + trait rouge sous le corps |
+| Poids entre 835 g et 900 g | Contour orange |
+| Verre opaque | Tirets rouges sur le corps |
+| Verre blanc | Tirets orange sur le corps |
+| Incrustations | Cercles rouges sur le corps |
+| Coiffe étain / alu épais / complexe | Contour rouge + point rouge |
+| Thermoformage | Rectangle rouge transparent sur la coiffe |
+| Collerette plastique / métal | Collerette rouge |
+| Plaque plastique ou inséparable | Capsule rouge + point rouge |
+| Étiquette en matière non recyclable | Étiquette rouge |
+| Dorure à chaud | Lignes dorées + cercle rouge |
+| Aplats d'encre > 70 % | Rectangle sombre sur l'étiquette |
+
+---
+
+### Composant `RadarChart`
+
+Graphique araignée SVG à 8 branches (sans dépendance externe).
+
+**Branches :** Flacon · Coiffe · Bouchon · Étiquette · Étuis · Suremb. · Carton · Objets
+
+**Grille :** 5 niveaux à 20 %, 40 %, 60 %, 80 %, 100 %
+
+**Couleurs des points :** vert ≥ 80 %, or ≥ 60 %, rouge < 60 %
+
+---
+
+### Composant `GammeDashboard`
+
+Barre de navigation supérieure affichant la gamme complète.
+
+**Score Maison :**
+- Pondéré par le volume annuel si au moins une cuvée a un volume défini
+- Moyenne simple sinon
+
+**Formule pondérée :**
+```
+scoreMailson = Σ(score_i × volume_i) / Σ(volume_i)
+```
+
+---
+
+### Composant `GammeModal`
+
+Modale de gestion du catalogue de cuvées (ajout, renommage, suppression, volume annuel).
+
+Chaque cuvée est créée avec `createDefaultDiagnostic()` et un identifiant auto-incrémenté (`max(ids) + 1`).
+
+---
+
+### Composant `Warn`
+
+Sous-composant d'alerte (utilisé dans `BottleVisualizer`) avec deux niveaux :
+- `level="error"` → fond rouge
+- `level="warn"` → fond ambre
+
+---
+
+## 9. Barème de scoring détaillé
+
+### Score global
+
+```
+score = max(0, min(100, round((1 - totalRaw / 70) × 100)))
+```
+
+Où `totalRaw = Σ(pénalités de tous les modules)`.
+
+### Scores par module
+
+```
+score_module = max(0, min(100, round((1 - pénalité_module / plafond) × 100)))
+```
+
+| Module | Plafond | Pénalités possibles (max cumulé) |
+|---|---|---|
+| Bouteille | 9 | Poids interpolé 0→3, opaque +3, blanc +3, incrustations +3 |
+| Coiffe | 10 | Étain +3, alu épais +1, complexe +1, longue +1, collerette papier +1, collerette plastique/métal +3, thermo +3 |
+| Bouchage | 7 | Plaque plastique +3, impressions poly +1, bouchon non certifié +1, inséparable +2 |
+| Étiquette | 12 | Multi-ét. +1, couleurs +1, aplats +1, encrage>70% +2, matière +3, REH +1, dorure chaud +1, ultra-colle +3, wash-off **-1** |
+| Étuis | 15 | Systématique +3, lourd ≥900g +1, éléments +1, aplats +1, soie +1, bois +3, plastique +1, aimant +3 |
+| Suremballage | 9 | Sur demande +1, systématique +3, aplats +1, plastique +1, aimant +3 |
+| Carton | 8 | Vierge +1, double cannelure +1, inter plastique +3, inter carton +1, scotch plastique +1, dorure chaud +1, encre minérale +1 |
+| Objet | 3 | Présence +3 |
+
+---
+
+## 10. Axes RSE transversaux
+
+Trois axes transversaux recoupent les critères de plusieurs modules pour donner une lecture RSE synthétique.
+
+### Axe Sobriété (plafond : 21)
+
+Mesure l'effort de réduction à la source (poids, suremballage, simplicité).
+
+**Contributions :**
+
+| Module | Pénalités de sobriété |
+|---|---|
+| Bouteille | Poids interpolé (0→3) |
+| Coiffe | Étain +1, alu épais +1, complexe +1, longue +1, collerette papier +0.5, collerette plastique/métal +2 |
+| Bouchage | Impressions poly +0.5 |
+| Étiquette | Multi-ét. +0.5, couleurs +0.5, aplats +1, encrage>70% +1, dorure chaud +0.5 |
+| Étuis | Systématique +1, lourd +1, éléments +0.5, aplats +0.5, soie +0.5 |
+| Suremballage | Sur demande +0.5, systématique +1.5, aplats +0.5 |
+| Carton | Double cannelure +0.5, dorure chaud +0.5 |
+| Objet | Présence +1 |
+
+```
+scoreSobriete = max(0, min(100, round((1 - totalSobriete / 21) × 100)))
+```
+
+### Axe Recyclabilité Citeo (plafond : 10)
+
+Mesure la capacité des emballages à entrer dans les filières de tri et recyclage Citeo.
+
+**Contributions :**
+
+| Module | Pénalités de recyclabilité |
+|---|---|
+| Bouteille | Opaque +1, incrustations +1 |
+| Coiffe | Thermoformé +1 |
+| Bouchage | Plaque plastique +1, inséparable +1 |
+| Étiquette | Ultra-colle +1 |
+| Étuis | Bois +1, aimant +1 |
+| Suremballage | Aimant +1 |
+| Carton | (aucune contribution directe) |
+
+```
+scoreRecyclage = max(0, min(100, round((1 - totalRecyclage / 10) × 100)))
+```
+
+### Axe Ressources Matières (plafond : 13)
+
+Mesure la qualité et l'origine des matières (recyclées, certifiées, renouvelables).
+
+**Contributions :**
+
+| Module | Pénalités matières |
+|---|---|
+| Bouteille | Blanc +1 |
+| Bouchage | Bouchon non certifié +1 |
+| Étiquette | Matière non recyclable +1, REH +0.5 |
+| Étuis | Plastique +1 |
+| Suremballage | Plastique +1 |
+| Carton | Vierge +1, inter plastique +1, inter carton +0.5, scotch plastique +0.5, encre minérale +0.5 |
+
+```
+scoreMateriaux = max(0, min(100, round((1 - totalMateriaux / 13) × 100)))
+```
+
+---
+
+## 11. Estimation carbone (gCO₂e)
+
+L'estimation est une **approche screening de premier niveau**, non certifiée ISO 14044. Elle donne un ordre de grandeur avec une incertitude de ±8 %.
+
+### Formule globale
+
+```
+carbonGCo2 = co2Bottle + co2Coiffe + co2Bouchage + co2Etiquette + co2Etuis + co2Suremb + co2Carton
+```
+
+### Détail par module
+
+```
+co2Bottle   = (bottleWeight / 1000) × glass[bottlecolor]
+co2Coiffe   = coiffe[coiffeMat][coiffeSize] + collerette[coiffecoll]
+co2Bouchage = capsule_tirage + bouchon_standard [+ capsule_plaque si plaque présente]
+co2Etiquette = etiquette[etiquetteMat] [+ contreEtiquette[etiquettecontreMat] si contre-étiquette]
+co2Etuis    = (etuiWeight / 1000) × Σ(facteurs matières) × (0.5 si sur commande)
+co2Suremb   = {15 | 45 | 10} × (0.3 si sur demande)
+co2Carton   = cartonCannelure[type] [+ cartonInter[type]]
+```
+
+### Exemple de calcul (BSA classique)
+
+| Composant | Calcul | Résultat |
+|---|---|---|
+| Bouteille (900 g verte) | 0.9 × 680 | 612 gCO₂e |
+| Coiffe (complexe, longue) | 14.8 + 0.169 | 14.97 gCO₂e |
+| Bouchage (métal, avec plaque) | 8.356 + 42.791 + 5.58 | 56.73 gCO₂e |
+| Étiquette (papier adh × 2) | 0.392 + 0.168 | 0.56 gCO₂e |
+| **Total estimé** | | **≈ 684 gCO₂e ± 8 %** |
+
+---
+
+## 12. Simulation What-If
+
+La modale What-If compare deux états :
+
+1. **État actuel** : `calculateDiagnostic(activeCuvee.diagnostic)`
+2. **État optimisé** : `calculateDiagnostic(simulateWhatIf(activeCuvee.diagnostic))`
+
+**Gain carbone affiché :**
+```
+gain% = round((1 - co2Optimisé / co2Actuel) × 100)
+```
+
+Le bouton "Appliquer à ma Cuvée active" remplace le diagnostic courant par le diagnostic optimisé et le persiste en localStorage.
+
+---
+
+## 13. Persistance & export CSV
+
+### localStorage
+
+Les données sont stockées sous la clé `embaDiag_cuveeData` au format JSON.
+
+**Structure stockée :**
+```json
+[
+  {
+    "id": 1,
+    "name": "Brut Sans Année",
+    "nb": "1000000",
+    "diagnostic": { ... },
+    "score": 52,
+    "result": { ... }
+  }
+]
+```
+
+Au rechargement, `score` et `result` sont recalculés à la volée (ils ne sont pas stockés pour éviter la désynchronisation avec le code de calcul).
+
+### Colonnes CSV (ordre fixe, 44 colonnes)
+
+```
+Nom de la Cuvée | Nombre de Bouteilles | Poids bouteille | Forme | Couleur | Incrustations |
+Matière coiffe | Longueur coiffe | Collerette | Thermoformé |
+Type capsule | Impressions capsule | Type bouchon | Plaquette séparable |
+Nb étiquettes | Nb couleurs | Aplats | Matière étiquette | Matière contre-étiquette |
+REH | Dorure | Colle |
+Type étui | Poids étui | Éléments associés | Aplats étuis | Soie | Papier | Carton | Bois | Plastique | Aimant |
+Type suremballage | Aplats suremballage | Papier sac | Carton sac | Plastique sac | Aimant sac |
+Carton recyclé | Cannelure | Intercalaire | Scotch | Dorure carton | Encrage | Objet
+```
+
+---
+
+## 14. Modifier les barèmes
+
+### Changer un facteur carbone
+
+Ouvrir `js/config.js` et modifier la valeur dans `BENCHMARK_CONFIG.carbonFactors`.
+
+Exemple — Mettre à jour le facteur du verre vert (nouvelle donnée fournisseur) :
+```js
+glass: { verte: 650, ... }  // était 680
+```
+
+### Changer une pénalité
+
+Modifier la valeur dans `BENCHMARK_CONFIG.penalties`.
+
+Exemple — Durcir la pénalité pour coiffe en étain :
+```js
+coiffe: { etainPenalty: 4.0, ... }  // était 3.0
+```
+
+### Ajouter un nouveau critère
+
+1. Ajouter le champ dans l'objet retourné par `createDefaultDiagnostic()` (`calculations.js`)
+2. Ajouter la pénalité dans `BENCHMARK_CONFIG.penalties` (`config.js`)
+3. Ajouter la logique de calcul dans `calculateDiagnostic()` (`calculations.js`)
+4. Ajouter le contrôle dans l'étape appropriée du `WizardTunnel` (`index.html`)
+5. Ajouter la colonne dans `exportToCSV()` et `parseCSV()` si export CSV souhaité (`csv.js`)
+
+### Modifier le plafond global (score sur 70 pts)
+
+La valeur `70` est codée en dur dans `calculateDiagnostic()` :
+```js
+const score = Math.max(0, Math.min(100, Math.round((1 - totalRaw / 70) * 100)));
+```
+Si vous ajoutez des modules avec de nouvelles pénalités maximales, mettre à jour ce dénominateur en conséquence.
+
+### Modifier les plafonds par module
+
+Les plafonds sont codés en dur dans les 8 lignes de calcul des scores partiels :
+```js
+const scoreBottle    = Math.max(0, Math.min(100, Math.round((1 - penaltyBottle    /  9) * 100)));
+const scoreCoiffe    = Math.max(0, Math.min(100, Math.round((1 - penaltyCoiffe    / 10) * 100)));
+// etc.
+```
+
+---
+
+*Document généré le 29/05/2026 — EmbaDiag v2.0 — CIVC / Adelphe & Citeo*

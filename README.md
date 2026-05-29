@@ -34,8 +34,6 @@ EmbaDiag est une application **100 % front-end** (HTML + JS + CSS, aucun serveur
 |---|---|
 | **Wizard multi-étapes** | 5 étapes guidées couvrant tous les composants de l'emballage |
 | **Score EmbaScore** | Note globale de 0 à 100 calculée en temps réel |
-| **Visualiseur bouteille SVG** | Rendu graphique de la bouteille avec codes couleur d'alerte |
-| **Radar ACV** | Graphique araignée des 8 composants évalués |
 | **Simulation What-If** | Projection du gain si toutes les bonnes pratiques étaient appliquées |
 | **Gestion de gamme** | Multi-cuvées avec score global Maison pondéré par volume |
 | **Export CSV** | Export de toutes les cuvées avec leurs données brutes |
@@ -58,8 +56,7 @@ OAD_EmbaDiag/
 └── js/
     ├── config.js       ← Constantes : facteurs carbone et pénalités
     ├── calculations.js ← Moteur de calcul du diagnostic
-    ├── csv.js          ← Fonctions d'import/export CSV
-    └── app.js          ← Source miroir des composants React (référence IDE)
+    └── csv.js          ← Fonctions d'import/export CSV
 ```
 
 ### Ordre de chargement dans le navigateur
@@ -98,12 +95,8 @@ Contient les fonctions d'import/export CSV.
 → À modifier pour **changer les colonnes exportées ou le format**.
 
 ### `index.html`
-Contient le HTML de la page + les composants React JSX inline.  
+Contient le HTML de la page + les composants React JSX dans le bloc `<script type="text/babel">` en fin de fichier. C'est le **seul fichier à modifier** pour l'interface utilisateur.  
 → À modifier pour **changer l'interface utilisateur, les libellés, l'ergonomie**.
-
-### `js/app.js`
-Copie miroir du bloc JSX de `index.html`, maintenu à jour pour l'édition dans l'IDE.  
-→ Éditer ici, puis copier-coller dans le `<script type="text/babel">` de `index.html`.
 
 ### `css/styles.css`
 Animations CSS et surcharges de style (scrollbar, bordures de focus des inputs).  
@@ -608,41 +601,6 @@ Formulaire en 5 étapes pour saisir les caractéristiques de l'emballage.
 
 ---
 
-### Composant `BottleVisualizer`
-
-Rendu SVG de la bouteille avec visualisation temps réel des anomalies.
-
-**Logique d'alerte visuelle :**
-
-| Condition | Signal visuel |
-|---|---|
-| Poids ≥ 900 g | Contour rouge épais + trait rouge sous le corps |
-| Poids entre 835 g et 900 g | Contour orange |
-| Verre opaque | Tirets rouges sur le corps |
-| Verre blanc | Tirets orange sur le corps |
-| Incrustations | Cercles rouges sur le corps |
-| Coiffe étain / alu épais / complexe | Contour rouge + point rouge |
-| Thermoformage | Rectangle rouge transparent sur la coiffe |
-| Collerette plastique / métal | Collerette rouge |
-| Plaque plastique ou inséparable | Capsule rouge + point rouge |
-| Étiquette en matière non recyclable | Étiquette rouge |
-| Dorure à chaud | Lignes dorées + cercle rouge |
-| Aplats d'encre > 70 % | Rectangle sombre sur l'étiquette |
-
----
-
-### Composant `RadarChart`
-
-Graphique araignée SVG à 8 branches (sans dépendance externe).
-
-**Branches :** Flacon · Coiffe · Bouchon · Étiquette · Étuis · Suremb. · Carton · Objets
-
-**Grille :** 5 niveaux à 20 %, 40 %, 60 %, 80 %, 100 %
-
-**Couleurs des points :** vert ≥ 80 %, or ≥ 60 %, rouge < 60 %
-
----
-
 ### Composant `GammeDashboard`
 
 Barre de navigation supérieure affichant la gamme complète.
@@ -663,14 +621,6 @@ scoreMailson = Σ(score_i × volume_i) / Σ(volume_i)
 Modale de gestion du catalogue de cuvées (ajout, renommage, suppression, volume annuel).
 
 Chaque cuvée est créée avec `createDefaultDiagnostic()` et un identifiant auto-incrémenté (`max(ids) + 1`).
-
----
-
-### Composant `Warn`
-
-Sous-composant d'alerte (utilisé dans `BottleVisualizer`) avec deux niveaux :
-- `level="error"` → fond rouge
-- `level="warn"` → fond ambre
 
 ---
 

@@ -48,10 +48,7 @@
   <script src="js/calculations.js"></script>
   <script src="js/csv.js"></script>
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       COMPOSANTS REACT — source miroir dans js/app.js (pour l'IDE)
-       Éditez js/app.js puis copiez ici si besoin de modifier l'UI.
-       ═══════════════════════════════════════════════════════════════════ -->
+  <!-- Composants React — éditez directement ce bloc JSX -->
   <script type="text/babel">
 const { useState, useEffect } = React;
 
@@ -102,223 +99,6 @@ const scoreColorCls = s =>
 
 const scoreBarCls = s =>
   s >= 80 ? 'bg-emerald-500' : s >= 60 ? 'bg-brand-gold' : 'bg-rose-500';
-
-/* ─── RADAR CHART ─────────────────────────────────────────────────── */
-function RadarChart({ scores, labels }) {
-  const size = 320, center = 160, maxR = 110, count = scores.length;
-  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
-  const pts = scores.map((s, i) => {
-    const a = (i * 2 * Math.PI / count) - (Math.PI / 2), r = maxR * (s / 100);
-    return { x: center + r * Math.cos(a), y: center + r * Math.sin(a), s, label: labels[i], a };
-  });
-  const polyStr = pts.map(p => `${p.x},${p.y}`).join(' ');
-  const dotCol = s => s >= 80 ? '#10b981' : s >= 60 ? '#C5A059' : '#ef4444';
-
-  return (
-    <div className="bg-brand-offwhite border border-brand-border rounded-xl p-4 flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
-      <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[9px] uppercase font-bold tracking-widest text-brand-dark/55">
-        {I('Activity', 'text-brand-gold animate-pulse', 'w-3.5', 'h-3.5')} Analyse de Cycle de Vie Simplifiée
-      </div>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[280px] h-auto drop-shadow-sm mt-4 select-none">
-        {gridLevels.map((lv, gi) => {
-          const gps = Array.from({ length: count }).map((_, i) => {
-            const a = (i * 2 * Math.PI / count) - (Math.PI / 2), r = maxR * lv;
-            return `${center + r * Math.cos(a)},${center + r * Math.sin(a)}`;
-          });
-          return <polygon key={gi} points={gps.join(' ')} fill="none" stroke="#E9ECEF" strokeWidth="0.8" strokeDasharray={gi === 4 ? 'none' : '3,3'} />;
-        })}
-        {gridLevels.map((lv, i) => (
-          <text key={i} x={center} y={center - maxR * lv - 3} textAnchor="middle"
-            style={{ fill: 'rgba(45,52,54,0.45)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
-            {Math.round(lv * 100)}%
-          </text>
-        ))}
-        {Array.from({ length: count }).map((_, i) => {
-          const a = (i * 2 * Math.PI / count) - (Math.PI / 2);
-          return <line key={i} x1={center} y1={center} x2={center + maxR * Math.cos(a)} y2={center + maxR * Math.sin(a)} stroke="#E9ECEF" strokeWidth="1" />;
-        })}
-        {scores.length > 0 && <polygon points={polyStr} fill="rgba(197,160,89,0.14)" stroke="#C5A059" strokeWidth="2.2" />}
-        {pts.map((p, i) => {
-          const td = maxR + 22, lx = center + td * Math.cos(p.a), ly = center + td * Math.sin(p.a);
-          let ta = 'middle';
-          if (Math.cos(p.a) > 0.1) ta = 'start';
-          if (Math.cos(p.a) < -0.1) ta = 'end';
-          let dy = '0.33em';
-          if (Math.sin(p.a) > 0.8) dy = '0.9em';
-          if (Math.sin(p.a) < -0.8) dy = '-0.1em';
-          return (
-            <g key={i}>
-              <circle cx={p.x} cy={p.y} r="4.5" fill={dotCol(p.s)} stroke="#fff" strokeWidth="1.5" />
-              <text x={lx} y={ly} dy={dy} textAnchor={ta}
-                style={{ fill: 'rgba(45,52,54,0.75)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
-                {p.label}
-              </text>
-              <text x={p.x} y={p.y - 8} textAnchor="middle"
-                style={{ fill: 'rgba(45,52,54,0.85)', fontFamily: 'JetBrains Mono', fontSize: '8px', fontWeight: 'bold' }}>
-                {Math.round(p.s)}%
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-/* ─── BOTTLE VISUALIZER ───────────────────────────────────────────── */
-function BottleVisualizer({ data }) {
-  const res = calculateDiagnostic(data);
-  const weight = parseFloat(data.bottleWeight) || 0;
-  const isOpaque = data.bottlecolor === 'opaque', isBlanche = data.bottlecolor === 'blanche';
-  const isHeavy = weight >= 900, isOverweight = weight > 835 && weight < 900 && data.bottleshape !== 'special';
-  const coiffeWarn = ['etain','alu_epais','complexe'].includes(data.coiffeMat);
-  const coiffeLong = data.coiffeSize === 'longue';
-  const collWarn = ['plastique','metal'].includes(data.coiffecoll);
-  const thermoWarn = data.coiffethermo === 'oui';
-  const plaqueWarn = data.capsuleType === 'plastique' || data.plaqueSeparable === 'non';
-  const etiMatWarn = ['papiercoton','métal','plastique'].includes(data.etiquetteMat);
-  const highInk = data.etiquetteEcoInk || data.etiquetteInkRatio === '>70%';
-  const hotDore = data.etiquetteDor === 'dorurechaud';
-  const ultraColle = data.etiquetteColle === 'colleultra';
-  const sysEtui = data.etuisType === 'systematique';
-
-  const foilColor = () => {
-    if (data.coiffeMat === 'papier')    return '#e7e5e4';
-    if (data.coiffeMat === 'etain')     return '#9ca3af';
-    if (data.coiffeMat === 'alu_epais') return '#d1d5db';
-    if (data.coiffeMat === 'complexe')  return '#e5e7eb';
-    return '#fcd34d';
-  };
-  const glassColor = () => {
-    if (isOpaque)  return '#1c1917';
-    if (isBlanche) return '#e2e8f0';
-    if (data.bottlecolor === 'brune') return '#78350f';
-    return '#14532d';
-  };
-
-  const coiffePath = coiffeLong
-    ? "M 88 40 C 88 110, 82 130, 74 150 L 126 150 C 118 130, 112 110, 112 40 Z"
-    : "M 88 40 C 88 75, 88 95, 87 105 L 113 105 C 112 95, 112 75, 112 40 Z";
-  const collPath = coiffeLong
-    ? "M 78 120 C 78 120, 100 130, 122 120 L 124 135 C 124 135, 100 145, 76 135 Z"
-    : "M 87 90 C 87 90, 100 95, 113 90 L 113 100 C 113 100, 100 105, 87 100 Z";
-
-  return (
-    <div className="bg-white border border-brand-border rounded-xl p-5 shadow-sm flex flex-col">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-brand-border">
-        <div>
-          <h3 className="text-sm font-bold text-brand-dark flex items-center gap-1.5">
-            {I('Leaf', 'text-brand-gold', 'w-4', 'h-4')} Rendu Éco-conception Temps Réel
-          </h3>
-          <p className="text-[10px] text-brand-dark/60 font-sans mt-0.5">Maquette virtuelle sensorielle des impacts de l'Unité Vente</p>
-        </div>
-        <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold border ${scoreColorCls(res.score)}`}>
-          Score : {res.score}%
-        </span>
-      </div>
-      <div className="flex gap-6 items-start flex-wrap">
-        <div className="relative flex-shrink-0 flex justify-center" style={{ height: '290px', width: '160px' }}>
-          <svg viewBox="0 0 200 400" style={{ height: '100%', width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}>
-            <path d="M 100 25 C 90 25, 88 50, 88 80 C 88 110, 82 130, 70 160 C 55 190, 52 220, 52 260 C 52 320, 55 375, 75 375 L 125 375 C 145 375, 148 320, 148 260 C 148 220, 145 190, 130 160 C 118 130, 112 110, 112 80 C 112 50, 110 25, 100 25 Z"
-              fill={glassColor()} stroke={isHeavy ? '#ef4444' : isOverweight ? '#f59e0b' : '#3f3f46'} strokeWidth={isHeavy ? 3 : 1.5} />
-            {(isOpaque || isBlanche) && <path d="M 54 260 C 54 320, 57 373, 75 373 L 125 373 C 143 373, 146 320, 146 260"
-              fill="none" stroke={isOpaque ? '#ef4444' : '#f59e0b'} strokeWidth="2.5" strokeDasharray="4,4" />}
-            {data.bottleincr === 'oui' && <g>
-              <circle cx="90" cy="240" r="3" fill="#ef4444" />
-              <circle cx="110" cy="250" r="3" fill="#ef4444" />
-              <circle cx="100" cy="265" r="3" fill="#ef4444" />
-              <path d="M 85 240 Q 100 260, 115 240" stroke="#ef4444" strokeWidth="1" fill="none" />
-            </g>}
-            <path d={coiffePath} fill={foilColor()} stroke={coiffeWarn ? '#ef4444' : '#22c55e'} strokeWidth={coiffeWarn ? 1.8 : 1} />
-            {thermoWarn && <path d="M 86 35 L 86 120 L 114 120 L 114 35 Z"
-              fill="rgba(239,68,68,0.15)" stroke="#ef4444" strokeWidth="1.2" strokeDasharray="3,1" />}
-            {data.coiffecoll !== 'non' && data.coiffecoll !== '0' && <path d={collPath}
-              fill={collWarn ? '#f87171' : '#a7f3d0'} stroke={collWarn ? '#ef4444' : '#10b981'} strokeWidth="1" />}
-            <path d="M 88 40 Q 100 35, 112 40 Q 112 25, 100 25 Q 88 25, 88 40"
-              fill={plaqueWarn ? '#fca5a5' : '#10b981'} stroke={plaqueWarn ? '#ef4444' : '#047857'} strokeWidth="1.5" />
-            <ellipse cx="100" cy="42" rx="11" ry="3" fill="none" stroke="#27272a" strokeWidth="1" />
-            <line x1="89" y1="42" x2="87" y2="70" stroke="#27272a" strokeWidth="0.8" />
-            <line x1="111" y1="42" x2="113" y2="70" stroke="#27272a" strokeWidth="0.8" />
-            <path d="M 62 210 L 138 210 A 80 80 0 0 1 138 290 L 62 290 A 80 80 0 0 1 62 210 Z"
-              fill={etiMatWarn ? '#fee2e2' : '#fefbf3'} stroke={etiMatWarn ? '#ef4444' : '#d97706'} strokeWidth={etiMatWarn || ultraColle ? 2 : 1} />
-            {hotDore && <g>
-              <path d="M 72 230 L 128 230" stroke="#f59e0b" strokeWidth="2.5" />
-              <path d="M 72 270 L 128 270" stroke="#f59e0b" strokeWidth="2.5" />
-              <circle cx="100" cy="250" r="12" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="3,2" />
-            </g>}
-            {highInk && <rect x="75" y="240" width="50" height="20" fill="#3f3f46" rx="2" style={{ opacity: 0.8 }} />}
-            {plaqueWarn && <circle cx="100" cy="30" r="5" fill="#ef4444" style={{ opacity: 0.75 }} />}
-            {coiffeWarn && <circle cx="100" cy="90" r="5" fill="#ef4444" style={{ opacity: 0.75 }} />}
-            {isHeavy && <path d="M 52 320 Q 100 340, 148 320" fill="none" stroke="#ef4444" strokeWidth="3" />}
-          </svg>
-          <div style={{ position: 'absolute', top: '8%', left: '2%' }}
-            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
-            <span className={`w-1.5 h-1.5 rounded-full ${plaqueWarn ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Plaque
-          </div>
-          <div style={{ position: 'absolute', top: '28%', right: '2%' }}
-            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
-            <span className={`w-1.5 h-1.5 rounded-full ${coiffeWarn || coiffeLong ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Coiffe
-          </div>
-          <div style={{ position: 'absolute', top: '60%', left: '2%' }}
-            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
-            <span className={`w-1.5 h-1.5 rounded-full ${etiMatWarn || ultraColle || hotDore ? 'bg-rose-500' : 'bg-emerald-500'}`} /> Étiquette
-          </div>
-          <div style={{ position: 'absolute', bottom: '2%', right: '2%' }}
-            className="bg-brand-dark text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 font-mono border border-brand-dark/25">
-            <span className={`w-1.5 h-1.5 rounded-full ${isHeavy || isOpaque ? 'bg-rose-500' : 'bg-emerald-500'}`} /> {weight}g
-          </div>
-        </div>
-        <div className="flex-1 min-w-0 space-y-2">
-          <div className="bg-brand-offwhite border border-brand-border rounded-lg p-3">
-            <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-gray flex items-center gap-1">
-              {I('Info', 'text-brand-dark/40', 'w-3.5', 'h-3.5')} Anomalies Identifiées
-            </h4>
-            <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto pr-1">
-              {isHeavy && <Warn level="error" title={`Bouteille excessive (${weight}g)`} msg="Dépasse l'ancien standard 900g. Impact carbone colossal." />}
-              {isOverweight && <Warn level="warn" title={`Marge d'allègement (${weight}g)`} msg={`Visez le standard de 835g. Pénalité interpolée (-${res.rawPenalties.bottle.toFixed(1)} pts).`} />}
-              {isOpaque && <Warn level="error" title="Verre Opaque" msg="Empêche le tri optique infrarouge Adelphe Citeo (-3 pts)." />}
-              {isBlanche && <Warn level="warn" title="Verre Blanc" msg="Taux de calcin recyclé très faible. Forte pression matière vierge." />}
-              {data.coiffeMat === 'etain' && <Warn level="error" title="Coiffe en Étain" msg="Pénalité lourde. Extraction énergivore et nocive." />}
-              {coiffeLong && data.coiffeMat !== 'papier' && <Warn level="warn" title="Coiffe longue" msg="Surconsommation d'aluminium. Privilégiez un habillage court." />}
-              {data.bottleincr === 'oui' && <Warn level="error" title="Incrustations fusionnées" msg="Pollue les fours à calcin verriers." />}
-              {plaqueWarn && <Warn level="error" title="Plaque d'acier inséparable" msg="L'opercule plastique bloque le captage magnétique Citeo." />}
-              {ultraColle && <Warn level="error" title="Adhésifs PSA permanents" msg="Brûlent dans le calcin en laissant des dépôts vitreux noirs." />}
-              {hotDore && <Warn level="warn" title="Dorure à chaud" msg="Consomme une énergie de pression thermique importante." />}
-              {sysEtui && <Warn level="error" title="Étuis distribués systématiquement" msg="Génère un volume excessif de déchets carton." />}
-              {data.etiquetteColle === 'collewashoff' && (
-                <div className="flex gap-2 items-start text-xs text-emerald-700 bg-emerald-50/50 p-2 rounded border border-emerald-100/50">
-                  <span className="mt-0.5">{I('CheckCircle2', 'text-emerald-500', 'w-4', 'h-4')}</span>
-                  <div><span className="font-semibold">Adhésif Wash-Off actif ✓</span>
-                    <p className="text-[10px] mt-0.5">Sublime le réemploi et consigne de verre.</p></div>
-                </div>
-              )}
-              {!isHeavy && !isOverweight && !isOpaque && !coiffeWarn && !plaqueWarn && !ultraColle && (
-                <div className="flex gap-2 items-start text-xs text-emerald-700 bg-emerald-50/30 p-2 rounded border border-emerald-100/30">
-                  {I('CheckCircle2', 'text-emerald-500 mt-0.5 shrink-0', 'w-4', 'h-4')}
-                  <div><span className="font-semibold">Base bouteille optimisée</span>
-                    <p className="text-[10px] text-emerald-600 mt-0.5">Profil proche de l'idéal préconisé par le Comité Champagne.</p></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Warn({ level, title, msg }) {
-  const cls = level === 'error'
-    ? 'text-rose-700 bg-rose-50/50 border-rose-100/50'
-    : 'text-amber-700 bg-amber-50/50 border-amber-100/50';
-  const ic = level === 'error' ? 'text-rose-500' : 'text-amber-500';
-  return (
-    <div className={`flex gap-2 items-start text-xs p-2 rounded border ${cls}`}>
-      {I('AlertTriangle', `${ic} mt-0.5 shrink-0`, 'w-4', 'h-4')}
-      <div><span className="font-semibold">{title}</span><p className="text-[10px] mt-0.5">{msg}</p></div>
-    </div>
-  );
-}
 
 /* ─── WIZARD TUNNEL ───────────────────────────────────────────────── */
 const STEPS = [
@@ -859,7 +639,7 @@ function App() {
             {I('Upload', '', 'w-3.5', 'h-3.5')} Charger (.CSV)
             <input type="file" accept=".csv" className="hidden" onChange={handleLoadCSV} />
           </label>
-          <a href="https://www.champagne.fr/" target="_blank" rel="noopener noreferrer"
+          <a href="https://extranet-bo.comitechampagne.fr/environnement/emballages" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 bg-brand-dark hover:opacity-90 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition active:scale-95 shadow-sm cursor-pointer">
             Guide Éco-conception {I('ExternalLink', 'text-white', 'w-3', 'h-3')}
           </a>
@@ -878,10 +658,7 @@ function App() {
             </div>
           )}
           {activeCuvee ? (
-            <div className="grid grid-cols-1 gap-6">
-              <BottleVisualizer data={activeCuvee.diagnostic} />
-              <WizardTunnel data={activeCuvee.diagnostic} onChange={handleDiagChange} onSimulateWhatIf={() => setShowWhatIf(true)} />
-            </div>
+            <WizardTunnel data={activeCuvee.diagnostic} onChange={handleDiagChange} onSimulateWhatIf={() => setShowWhatIf(true)} />
           ) : (
             <div className="bg-white border border-brand-border rounded-xl p-10 text-center space-y-3">
               {I('Wine', 'text-brand-dark/20 mx-auto', 'w-12', 'h-12')}
@@ -941,14 +718,7 @@ function App() {
                 </div>
               </div>
 
-              <div>
-                <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/55 mb-2">Empreinte Structurale des Composants</h4>
-                <RadarChart
-                  scores={[currentResult.scoreBottle, currentResult.scoreCoiffe, currentResult.scoreBouchage, currentResult.scoreEtiquette, currentResult.scoreEtuis, currentResult.scoreSuremb, currentResult.scoreCarton, currentResult.scoreObjet]}
-                  labels={['Flacon','Coiffe','Bouchon','Étiquette','Étuis','Suremb.','Carton','Objets']} />
-              </div>
-
-              <div className="space-y-2 border-t border-brand-border pt-4">
+<div className="space-y-2 border-t border-brand-border pt-4">
                 <h4 className="text-[10px] uppercase font-bold tracking-widest text-brand-dark/55 mb-3 block">Évaluation Détaillée par Module</h4>
                 {[
                   ['Matériau bouteille & Verre',       currentResult.scoreBottle],

@@ -34,10 +34,12 @@ EmbaDiag est une application **100 % front-end** (HTML + JS + CSS, aucun serveur
 |---|---|
 | **Wizard multi-étapes** | 5 étapes guidées couvrant tous les composants de l'emballage |
 | **Score EmbaScore** | Note globale de 0 à 100 calculée en temps réel |
+| **Non-concerné par module** | Modules Étuis et Suremballage marquables N/C — exclus du calcul de pénalités |
+| **Progression par module** | Badge `x/n` par module indiquant le taux de complétion des champs |
 | **Simulation What-If** | Projection du gain si toutes les bonnes pratiques étaient appliquées |
 | **Gestion de gamme** | Multi-cuvées avec score global Maison pondéré par volume |
-| **Export CSV** | Export de toutes les cuvées avec leurs données brutes |
-| **Import CSV** | Rechargement d'un export précédent |
+| **Export CSV** | Export de toutes les cuvées avec leurs données brutes (47 colonnes) |
+| **Import CSV** | Rechargement d'un export précédent — détection automatique du séparateur `,` / `;` |
 | **Persistance localStorage** | Sauvegarde automatique dans le navigateur |
 | **Axes RSE** | Scores croisés Sobriété / Recyclabilité / Ressources matières |
 
@@ -150,6 +152,7 @@ Chaque cuvée possède un objet `diagnostic` contenant toutes ses caractéristiq
 
 | Champ | Type | Valeurs possibles | Description |
 |---|---|---|---|
+| `etuisNC` | boolean | `true`, `false` | Module Étuis non-concerné — exclut toute pénalité étuis |
 | `etuisType` | string | `"pasetuiscoffret"`, `"commande"`, `"systematique"`, `"0"` | Mode de distribution des étuis |
 | `etuiWeight` | string (num) | `"400"`, `"900"`, … | Poids unitaire de l'étui en grammes |
 | `elementsassos` | boolean | `true`, `false` | Livrets et notices associés |
@@ -160,6 +163,7 @@ Chaque cuvée possède un objet `diagnostic` contenant toutes ses caractéristiq
 | `etuisBois` | boolean | `true`, `false` | Composition : bois massif |
 | `etuisPlastique` | boolean | `true`, `false` | Composition : plastique |
 | `etuisAimant` | boolean | `true`, `false` | Fermetures aimantées |
+| `surembNC` | boolean | `true`, `false` | Module Suremballage non-concerné — exclut toute pénalité suremballage |
 | `suremballage` | string | `"pas_de_sac"`, `"sac_sur_demande"`, `"sac_systematique"`, `"0"` | Type de suremballage boutique |
 | `suremballageEcoink` | boolean | `true`, `false` | Aplats de couleur sur le sac |
 | `sacPapier` | boolean | `true`, `false` | Sac en papier |
@@ -532,7 +536,7 @@ Génère et télécharge un fichier `embadiag_export.csv`.
 
 - **Encodage :** UTF-8 avec BOM (compatible Excel français)
 - **Séparateur :** virgule `,`
-- **44 colonnes** correspondant à tous les champs du diagnostic + nom et volume de la cuvée
+- **47 colonnes** correspondant à tous les champs du diagnostic + nom et volume de la cuvée
 - Les booléens sont exportés en `"Oui"` / `"Non"`
 
 ### `parseCSV(text)`
@@ -540,13 +544,14 @@ Génère et télécharge un fichier `embadiag_export.csv`.
 Recharge un fichier CSV exporté par EmbaDiag.
 
 - Lit la ligne d'en-tête (ignorée, mais requise)
+- **Détecte automatiquement le séparateur** `,` ou `;` en comparant leur fréquence dans la ligne d'en-tête (compatibilité Excel FR)
 - Reconstruit l'objet `diagnostic` depuis les colonnes en positionnement fixe
 - Les booléens `"Oui"` / `"true"` / `"1"` sont convertis en `true`
 - Retourne un tableau de cuvées compatible avec l'état React
 
-### `parseCSVLine(line)`
+### `parseCSVLine(line, sep)`
 
-Parseur CSV interne gérant les champs entre guillemets et les guillemets doublés (standard RFC 4180).
+Parseur CSV interne gérant les champs entre guillemets et les guillemets doublés (standard RFC 4180). Accepte un séparateur paramétrable (`,` par défaut).
 
 ### `csvCell(v)`
 
@@ -589,7 +594,8 @@ Formulaire en 5 étapes pour saisir les caractéristiques de l'emballage.
 → Champs : `etiquetteCount`, `etiquetteColor`, `etiquetteEcoInk`, `etiquetteInkRatio`, `etiquetteMat`, `etiquettecontreMat`, `papierreshum`, `etiquetteDor`, `etiquetteColle`
 
 **Étape 4 — Étuis & Sacs**  
-→ Champs : `etuisType`, `etuiWeight`, `elementsassos`, `etuisEcoink`, `etuissilkpaper`, `etuisBois`, `etuisPlastique`, `etuisPapier`, `etuisCarton`, `etuisAimant`, `suremballage`, `suremballageEcoink`, `sacPapier`, `sacCarton`, `sacPlastique`, `sacAimant`
+Chaque sous-section (Étuis et Suremballage) dispose d'un toggle **Non-concerné** : quand activé, tous les champs de la sous-section sont masqués et le module est exclu du calcul de pénalités.  
+→ Champs : `etuisNC`, `etuisType`, `etuiWeight`, `elementsassos`, `etuisEcoink`, `etuissilkpaper`, `etuisBois`, `etuisPlastique`, `etuisPapier`, `etuisCarton`, `etuisAimant`, `surembNC`, `suremballage`, `suremballageEcoink`, `sacPapier`, `sacCarton`, `sacPlastique`, `sacAimant`
 
 **Étape 5 — Expédition & Pub**  
 → Champs : `cartonRecycled`, `cartonCannelure`, `cartonInter`, `cartonScotch`, `cartonInk`, `objet`, `cartonDor`
@@ -598,6 +604,15 @@ Formulaire en 5 étapes pour saisir les caractéristiques de l'emballage.
 - `Sel({ label, name, opts, hint })` : `<select>` contrôlé
 - `Num({ label, name, placeholder, hint, disabled })` : `<input type="number">` contrôlé
 - `Chk({ id, label, name })` : `<input type="checkbox">` contrôlé
+
+---
+
+### Évaluation détaillée par module (dans `App`)
+
+Chaque module affiche :
+- Un badge **`x/n`** indiquant le nombre de champs select/numérique renseignés sur le total attendu — vert si complet, ambre si partiel, gris si vide.
+- Un badge **`N/C`** grisé à la place du score quand le module est marqué non-concerné (`etuisNC` / `surembNC`).
+- La **barre de progression** du score (absente en mode N/C).
 
 ---
 
@@ -799,8 +814,8 @@ Matière coiffe | Longueur coiffe | Collerette | Thermoformé |
 Type capsule | Impressions capsule | Type bouchon | Plaquette séparable |
 Nb étiquettes | Nb couleurs | Aplats | Matière étiquette | Matière contre-étiquette |
 REH | Dorure | Colle |
-Type étui | Poids étui | Éléments associés | Aplats étuis | Soie | Papier | Carton | Bois | Plastique | Aimant |
-Type suremballage | Aplats suremballage | Papier sac | Carton sac | Plastique sac | Aimant sac |
+Étuis non-concerné | Type étui | Poids étui | Éléments associés | Aplats étuis | Soie | Papier | Carton | Bois | Plastique | Aimant |
+Suremballage non-concerné | Type suremballage | Aplats suremballage | Papier sac | Carton sac | Plastique sac | Aimant sac |
 Carton recyclé | Cannelure | Intercalaire | Scotch | Dorure carton | Encrage | Objet
 ```
 

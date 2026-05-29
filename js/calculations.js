@@ -141,7 +141,7 @@ function calculateDiagnostic(d) {
   }
 
   let penaltyEtuis=0, penaltySobEtuis=0, penaltyMatEtuis=0, penaltyRecEtuis=0, co2Etuis=0;
-  if (d.etuisType && d.etuisType !== 'pasetuiscoffret' && d.etuisType !== '0') {
+  if (!d.etuisNC && d.etuisType && d.etuisType !== 'pasetuiscoffret' && d.etuisType !== '0') {
     const etWeight = parseFloat(d.etuiWeight) || 0;
     if (d.etuisType === 'systematique') {
       penaltyEtuis += cfg.penalties.etuis.systematiquePenalty; penaltySobEtuis += 1;
@@ -171,7 +171,7 @@ function calculateDiagnostic(d) {
   }
 
   let penaltySuremb=0, penaltySobSuremb=0, penaltyMatSuremb=0, penaltyRecSuremb=0, co2Suremb=0;
-  if (d.suremballage && d.suremballage !== 'pas_de_sac' && d.suremballage !== '0') {
+  if (!d.surembNC && d.suremballage && d.suremballage !== 'pas_de_sac' && d.suremballage !== '0') {
     if (d.suremballage === 'sac_sur_demande') {
       penaltySuremb += cfg.penalties.suremballage.commissionPenalty; penaltySobSuremb += 0.5;
     } else if (d.suremballage === 'sac_systematique') {
@@ -297,9 +297,9 @@ function createDefaultDiagnostic() {
     capsuleType: 'metalique', capsuleColor: 'mono', bouchonType: 'nsp', plaqueSeparable: 'non',
     etiquetteCount: '2', etiquetteColor: '4', etiquetteEcoInk: true, etiquetteMat: 'papieradh',
     etiquettecontreMat: 'papieradh', papierreshum: true, etiquetteDor: 'dorurechaud', etiquetteColle: 'colleultra',
-    etuisType: 'systematique', etuiWeight: '400', elementsassos: false, etuisEcoink: false,
+    etuisNC: false, etuisType: 'systematique', etuiWeight: '400', elementsassos: false, etuisEcoink: false,
     etuissilkpaper: false, etuisPapier: true, etuisCarton: false, etuisBois: false, etuisPlastique: false, etuisAimant: false,
-    suremballage: 'sac_sur_demande', suremballageEcoink: false, sacPapier: true, sacCarton: false, sacPlastique: false, sacAimant: false,
+    surembNC: false, suremballage: 'sac_sur_demande', suremballageEcoink: false, sacPapier: true, sacCarton: false, sacPlastique: false, sacAimant: false,
     cartonRecycled: 'oui', cartonCannelure: 'EB', cartonInter: 'carton', cartonScotch: 'plastique',
     cartonDor: 'pasdorure', cartonInk: 'huileminerale', objet: 'non',
   };

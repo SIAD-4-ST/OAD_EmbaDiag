@@ -12,9 +12,9 @@ function exportToCSV(cuvees) {
     'Collerette','Plastique thermoformé','Type de capsule','Impressions sur la capsule',
     'Type de bouchon','Plaquette Séparable',"Nombre d'étiquettes",'Nombre de couleurs',
     "Usage d'aplats de couleurs","Matière de l'étiquette",'Matière de la contre-étiquette',
-    "Résistance à l'état humide",'Dorure','Colle',"Type d'étuis/coffret","Poids d'étui/coffret",
+    "Résistance à l'état humide",'Dorure','Colle','Étuis non-concerné',"Type d'étuis/coffret","Poids d'étui/coffret",
     'Éléments associés','Aplats de couleurs étuis','Papier de soie utilisé','Papier utilisé',
-    'Carton utilisé','Bois utilisé','Plastique utilisé','Aimant(s) utilisé(s)','Type de suremballage',
+    'Carton utilisé','Bois utilisé','Plastique utilisé','Aimant(s) utilisé(s)','Suremballage non-concerné','Type de suremballage',
     'Aplats de couleurs suremballage','Papier utilisé suremballage','Carton utilisé suremballage',
     'Plastique utilisé suremballage','Aimant(s) utilisé(s) suremballage','Carton recyclé','Cannelure',
     'Intercalaire','Scotch','Dorure carton','Encrage carton','Objet publicitaire associé',
@@ -28,9 +28,9 @@ function exportToCSV(cuvees) {
       d.capsuleType, d.capsuleColor, d.bouchonType, d.plaqueSeparable || 'non',
       d.etiquetteCount, d.etiquetteColor, b(d.etiquetteEcoInk), d.etiquetteMat, d.etiquettecontreMat,
       b(d.papierreshum), d.etiquetteDor, d.etiquetteColle,
-      d.etuisType, d.etuiWeight, b(d.elementsassos), b(d.etuisEcoink), b(d.etuissilkpaper),
+      b(d.etuisNC), d.etuisType, d.etuiWeight, b(d.elementsassos), b(d.etuisEcoink), b(d.etuissilkpaper),
       b(d.etuisPapier), b(d.etuisCarton), b(d.etuisBois), b(d.etuisPlastique), b(d.etuisAimant),
-      d.suremballage, b(d.suremballageEcoink), b(d.sacPapier), b(d.sacCarton), b(d.sacPlastique), b(d.sacAimant),
+      b(d.surembNC), d.suremballage, b(d.suremballageEcoink), b(d.sacPapier), b(d.sacCarton), b(d.sacPlastique), b(d.sacAimant),
       d.cartonRecycled, d.cartonCannelure, d.cartonInter, d.cartonScotch, d.cartonDor, d.cartonInk, d.objet,
     ];
   });
@@ -42,14 +42,14 @@ function exportToCSV(cuvees) {
   URL.revokeObjectURL(url);
 }
 
-function parseCSVLine(line) {
+function parseCSVLine(line, sep = ',') {
   const result = []; let cur = ''; let inQ = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (ch === '"') {
       if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
       else { inQ = !inQ; }
-    } else if (ch === ',' && !inQ) {
+    } else if (ch === sep && !inQ) {
       result.push(cur.trim()); cur = '';
     } else {
       cur += ch;
@@ -64,8 +64,11 @@ function parseCSV(text) {
   if (lines.length < 2)
     throw new Error("Le fichier CSV doit contenir au moins une ligne d'en-tête et une ligne de données.");
 
+  const header = lines[0];
+  const sep = header.split(';').length > header.split(',').length ? ';' : ',';
+
   return lines.slice(1).map((line, i) => {
-    const row = parseCSVLine(line);
+    const row = parseCSVLine(line, sep);
     const pb = v => v === 'Oui' || v === 'true' || v === '1';
     return {
       id: i + 1,
@@ -82,16 +85,18 @@ function parseCSV(text) {
         etiquetteEcoInk: pb(row[16]), etiquetteMat: row[17] || 'papieradh',
         etiquettecontreMat: row[18] || 'papieradh', papierreshum: pb(row[19]),
         etiquetteDor: row[20] || 'dorurechaud', etiquetteColle: row[21] || 'colleultra',
-        etuisType: row[22] || 'pasetuiscoffret', etuiWeight: row[23] || '0',
-        elementsassos: pb(row[24]), etuisEcoink: pb(row[25]), etuissilkpaper: pb(row[26]),
-        etuisPapier: pb(row[27]), etuisCarton: pb(row[28]), etuisBois: pb(row[29]),
-        etuisPlastique: pb(row[30]), etuisAimant: pb(row[31]),
-        suremballage: row[32] || 'pas_de_sac', suremballageEcoink: pb(row[33]),
-        sacPapier: pb(row[34]), sacCarton: pb(row[35]), sacPlastique: pb(row[36]), sacAimant: pb(row[37]),
-        cartonRecycled: row[38] || 'oui', cartonCannelure: row[39] || 'B',
-        cartonInter: row[40] || 'carton', cartonScotch: row[41] || 'plastique',
-        cartonDor: row[42] || 'pasdorure', cartonInk: row[43] || 'huileminerale',
-        objet: row[44] || 'non',
+        etuisNC: pb(row[22]),
+        etuisType: row[23] || 'pasetuiscoffret', etuiWeight: row[24] || '0',
+        elementsassos: pb(row[25]), etuisEcoink: pb(row[26]), etuissilkpaper: pb(row[27]),
+        etuisPapier: pb(row[28]), etuisCarton: pb(row[29]), etuisBois: pb(row[30]),
+        etuisPlastique: pb(row[31]), etuisAimant: pb(row[32]),
+        surembNC: pb(row[33]),
+        suremballage: row[34] || 'pas_de_sac', suremballageEcoink: pb(row[35]),
+        sacPapier: pb(row[36]), sacCarton: pb(row[37]), sacPlastique: pb(row[38]), sacAimant: pb(row[39]),
+        cartonRecycled: row[40] || 'oui', cartonCannelure: row[41] || 'B',
+        cartonInter: row[42] || 'carton', cartonScotch: row[43] || 'plastique',
+        cartonDor: row[44] || 'pasdorure', cartonInk: row[45] || 'huileminerale',
+        objet: row[46] || 'non',
       },
     };
   });

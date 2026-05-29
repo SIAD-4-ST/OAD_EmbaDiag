@@ -50,15 +50,16 @@ EmbaDiag est une application **100 % front-end** (HTML + JS + CSS, aucun serveur
 ### Structure des fichiers
 
 ```
-dev/
+OAD_EmbaDiag/
 ├── index.html          ← Point d'entrée unique (HTML + JSX React inline)
+├── README.md
 ├── css/
 │   └── styles.css      ← Animations et styles custom (scrollbar, focus)
 └── js/
     ├── config.js       ← Constantes : facteurs carbone et pénalités
     ├── calculations.js ← Moteur de calcul du diagnostic
     ├── csv.js          ← Fonctions d'import/export CSV
-    └── app.jsx         ← Source miroir des composants React (référence IDE)
+    └── app.js          ← Source miroir des composants React (référence IDE)
 ```
 
 ### Ordre de chargement dans le navigateur
@@ -78,7 +79,7 @@ dev/
 
 ### Lancement
 
-Double-cliquer sur `dev/index.html` — s'ouvre directement dans le navigateur, aucun serveur requis.
+Double-cliquer sur `index.html` — s'ouvre directement dans le navigateur, aucun serveur requis.
 
 ---
 
@@ -100,7 +101,7 @@ Contient les fonctions d'import/export CSV.
 Contient le HTML de la page + les composants React JSX inline.  
 → À modifier pour **changer l'interface utilisateur, les libellés, l'ergonomie**.
 
-### `js/app.jsx`
+### `js/app.js`
 Copie miroir du bloc JSX de `index.html`, maintenu à jour pour l'édition dans l'IDE.  
 → Éditer ici, puis copier-coller dans le `<script type="text/babel">` de `index.html`.
 
